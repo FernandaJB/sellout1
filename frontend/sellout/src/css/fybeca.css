@@ -1,0 +1,282 @@
+/* Reset de márgenes y bordes */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body principal */
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #dadadade; /* Color de fondo del body */
+    color: #333; /* Color del texto en gris oscuro para mejor visibilidad */
+    line-height: 1.6;
+    padding: 10px;
+}
+
+/* Títulos */
+h1, h2 {
+    color: #000; /* Color de los títulos en negro */
+    font-weight: 700;
+}
+
+h1 {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+h2 {
+    font-size: 1.8rem;
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e0e0e0; /* Línea debajo de h2 */
+}
+
+/* Contenedor principal */
+.container {
+    max-width: 1840px;
+    margin: 40px auto;
+    padding: 40px;
+    background-color: #ffffffe7; /* Fondo del contenedor */
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /* Sombra del contenedor */
+}
+
+/* Botón de subir archivo */
+input[type="file"] {
+    display: block;
+    margin: 20px auto;
+    padding: 15px 25px;
+    font-size: 1.1rem;
+    color: #fff; /* Color del texto del input */
+    background-color: #16a085; /* Color de fondo */
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    width: auto;
+}
+
+input[type="file"]:hover {
+    background-color: #1abc9c; /* Color al pasar el ratón */
+    transform: scale(1.05);
+}
+
+input[type="file"]:focus {
+    outline: none;
+}
+
+/* Mensajes de error o carga */
+p {
+    text-align: center;
+    font-size: 1.2rem;
+    margin: 20px 0;
+    color: #333; /* Color del texto en gris oscuro */
+}
+
+p.error {
+    color: #e74c3c; /* Color de mensajes de error */
+    font-weight: bold;
+}
+
+p.loading {
+    color: #f39c12; /* Color de mensajes de carga */
+    font-style: italic;
+}
+
+/* Tablas de productos/clientes */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px; /* Reduce el margen superior */
+    background-color: #fff; /* Fondo de la tabla */
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Sombra de la tabla */
+}
+
+table th, table td {
+    padding: 8px 12px; /* Reduce el relleno de las celdas */
+    text-align: left;
+    border-bottom: 1px solid #ddd; /* Color de la línea de separación */
+    font-size: 0.9rem; /* Reduce el tamaño de la fuente */
+    color: #333; /* Color del texto en las celdas */
+}
+
+table th {
+    background-color: #34c430; /* Fondo de los encabezados */
+    color: #ffffff; /* Color del texto de los encabezados */
+    font-weight: bold;
+}
+
+table tr:hover {
+    background-color: #f7f7f7; /* Fondo de las filas al pasar el ratón */
+}
+
+table tr:nth-child(even) {
+    background-color: #f4f6f9; /* Fondo de las filas pares */
+}
+
+table td a {
+    color: #16a085; /* Color de los enlaces */
+    text-decoration: none;
+}
+
+table td a:hover {
+    text-decoration: underline; /* Estilo del enlace al pasar el ratón */
+}
+
+/* Diseño responsive */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+        margin: 20px;
+    }
+
+    h1, h2 {
+        font-size: 1.6rem;
+    }
+
+    input[type="file"] {
+        width: 100%; /* El input de archivo ocupa todo el ancho en pantallas pequeñas */
+    }
+
+    table th, table td {
+        font-size: 0.8rem; /* Reduce el tamaño de la fuente en pantallas pequeñas */
+        padding: 6px 10px; /* Reduce el relleno de las celdas en pantallas pequeñas */
+    }
+
+    /* Asegura que las tablas no desborden en pantallas pequeñas */
+    .table-wrapper {
+        overflow-x: auto;
+    }
+}
+
+/* Estilo general de los botones */
+button, .btn {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center;
+    color: #ffffff; /* Color del texto */
+    background-color: #16a085; /* Color de fondo */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    text-decoration: none; /* Elimina subrayado si es un enlace */
+}
+
+/* Efecto al pasar el ratón sobre el botón */
+button:hover, .btn:hover {
+    background-color: #1abc9c; /* Color de fondo cuando el ratón pasa por encima */
+    transform: scale(1.05); /* Le da un pequeño aumento de tamaño */
+}
+
+/* Efecto al hacer clic sobre el botón */
+button:active, .btn:active {
+    background-color: #16a085; /* Color de fondo cuando el botón es presionado */
+    transform: scale(0.95); /* Reduce un poco el tamaño */
+}
+
+/* Estilo del botón con estado deshabilitado */
+button:disabled, .btn:disabled {
+    background-color: #b2b2b2; /* Color gris para botón deshabilitado */
+    cursor: not-allowed; /* Cambia el cursor a no permitido */
+}
+
+/* Estilo para botones de alerta */
+button.alert, .btn.alert {
+    background-color: #e74c3c; /* Color de fondo para alertas */
+}
+
+button.alert:hover, .btn.alert:hover {
+    background-color: #c0392b; /* Color de fondo para alertas cuando el ratón pasa */
+}
+
+/* Estilo para botones de éxito */
+button.success, .btn.success {
+    background-color: #2ecc71; /* Color de fondo para éxito */
+}
+
+button.success:hover, .btn.success:hover {
+    background-color: #27ae60; /* Color de fondo para éxito cuando el ratón pasa */
+}
+
+/* Estilos del modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(17, 17, 17, 0.5); /* Fondo semitransparente */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999; /* Asegura que el modal esté encima de otros elementos */
+}
+
+.modal-content {
+    background-color: #c7c7c7;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 500px; /* Ancho fijo del modal */
+    max-height: 100vh; /* 80% de la altura de la ventana */
+    overflow-y: auto; /* Permite el desplazamiento vertical */
+    padding: 25px;
+    border-radius: 10px;
+}
+
+/* Estilo de los campos de entrada en el modal */
+.modal-content input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #462121;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.modal-content label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block;
+}
+
+/* Botones en el modal */
+.modal-content .button-group {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.modal-content button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background-color: #16a085;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.modal-content button:hover {
+    background-color: #1abc9c;
+}
+
+.modal-content button:focus {
+    outline: none;
+}
+
+/* Estilo para los inputs */
+input {
+    color: #333; /* Asegura que el texto de los inputs sea visible */
+}
+
+/* Estilo para los inputs de texto */
+input[type="text"] {
+    color: #333; /* Color de texto gris oscuro */
+}

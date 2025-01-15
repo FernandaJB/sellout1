@@ -1,0 +1,81 @@
+/* Contenedor principal del formulario de registro */
+.register-container {
+    @apply flex items-center justify-center min-h-screen bg-gray-100;
+    background-image: linear-gradient(to bottom right, #1d1c1a, #555151, #c2ac33);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Tarjeta que envuelve el formulario */
+  .register-card {
+    @apply w-full max-w-lg p-8 bg-white shadow-lg rounded-lg;
+  }
+  
+  /* Título del formulario de registro */
+  .register-title {
+    @apply text-2xl font-bold mb-6 text-center text-gray-800;
+  }
+  
+  /* Estilos para los campos del formulario */
+  .p-field {
+    @apply mb-4;
+  }
+  
+  .p-field label {
+    @apply block text-sm font-medium text-gray-700;
+  }
+  
+  /* Estilos para los inputs de texto */
+  .p-inputtext {
+    @apply mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    color: #000000; /* Esto establece el color del texto a negro */
+}
+
+  
+  /* Estilos para los inputs de contraseña */
+  .p-password {
+    @apply mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    color: #000000;
+  }
+  
+  /* Estilos para los mensajes de error */
+  .p-error {
+    @apply mt-1 text-sm text-red-600;
+  }
+
+  .p-button-primary {
+    @apply w-full px-4 py-2 text-white font-semibold rounded-full shadow-lg;
+    background-image: linear-gradient(to right, #4CAF50, #8BC34A);
+    border: none;
+    transition: all 0.3s ease-in-out;
+}
+
+.p-button-primary:hover {
+    background-image: linear-gradient(to right, #388E3C, #689F38);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+  
+  /* Estilos para el botón de regreso */
+  .p-button-secondary {
+    @apply w-full px-4 py-2 text-white font-semibold rounded-md shadow-md;
+    background-color: #757575;
+    border: none;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+.p-button-secondary:hover {
+    background-color: #616161;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+  
+  /* Estilos para el mensaje de éxito */
+  .p-success {
+    @apply mt-2 text-sm text-green-600;
+  }
+  
