@@ -21,6 +21,4 @@ public class MantenimientoCliente {
     private String ciudad;
 
     private String codigo_Proveedor;
-
-
 }

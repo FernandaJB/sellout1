@@ -8,6 +8,7 @@ import RestablecerContrasenia from './RestablecerContrasenia';
 import FybecaMantenimientoCliente from './FybecaMantenimientoCliente';
 import FybecaMantenimientoProducto from './FybecaMantenimientoProducto';
 import FybecaTemplate from './FybecaTemplate';
+import FybecaTipoMueble from './FybecaTipoMueble';
 import './App.css';
 
 const App = () => {
@@ -78,6 +79,12 @@ const App = () => {
         >
           Fybeca Matenimiento Producto
         </button>
+        <button 
+          className={activeTab === 'FybecaTipoMueble' ? 'active' : ''}
+          onClick={() => setActiveTab('FybecaTipoMueble')}
+        >
+          Fybeca Mantenimiento Tipo Mueble
+        </button>
       </nav>
     );
   };
@@ -111,6 +118,9 @@ const App = () => {
                 </div>
                 <div className="tab-content">
                   {activeTab === 'FybecaMantenimientoProducto' && <FybecaMantenimientoProducto />}
+                </div>
+                <div className="tab-content">
+                  {activeTab === 'FybecaTipoMueble' && <FybecaTipoMueble />}
                 </div>
               </div>
             ) : (

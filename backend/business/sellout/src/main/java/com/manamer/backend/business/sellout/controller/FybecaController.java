@@ -4,6 +4,7 @@ import com.manamer.backend.business.sellout.models.Cliente;
 import com.manamer.backend.business.sellout.models.MantenimientoCliente;
 import com.manamer.backend.business.sellout.models.MantenimientoProducto;
 import com.manamer.backend.business.sellout.models.Producto;
+import com.manamer.backend.business.sellout.models.TipoMueble;
 import com.manamer.backend.business.sellout.models.Venta;
 import com.manamer.backend.business.sellout.repositories.ClienteRepository;
 import com.manamer.backend.business.sellout.repositories.MantenimientoProductoRepository;
@@ -12,6 +13,7 @@ import com.manamer.backend.business.sellout.repositories.VentaRepository;
 import com.manamer.backend.business.sellout.service.ClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoProductoService;
+import com.manamer.backend.business.sellout.service.TipoMuebleService;
 import com.manamer.backend.business.sellout.service.VentaService;
 
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,9 @@ import java.util.List;
 import java.util.ArrayList;
 import org.springframework.http.HttpStatus;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.Iterator;
 
 @RestController
@@ -43,10 +48,6 @@ public class FybecaController {
     private ProductoRepository productoRepository;
 
     private final VentaService ventaService;
-    @Autowired
-    public FybecaController(VentaService ventaService) {
-        this.ventaService = ventaService;
-    }
 
     @Autowired
     private MantenimientoClienteService serviceClienteService;
@@ -70,6 +71,19 @@ public class FybecaController {
 
     @Autowired
     private MantenimientoProductoService mantenimientoProductoService;  // Inyección del servicio
+
+    private final TipoMuebleService tipoMuebleService;
+
+    @Autowired
+    public FybecaController(MantenimientoClienteService mantenimientoClienteService,
+                            MantenimientoProductoService mantenimientoProductoService,
+                            VentaService ventaService,
+                            TipoMuebleService tipoMuebleService) {
+        this.mantenimientoClienteService = mantenimientoClienteService;
+        this.mantenimientoProductoService = mantenimientoProductoService;
+        this.ventaService = ventaService;
+        this.tipoMuebleService = tipoMuebleService;
+    }
 
     // Métodos para productos
     @GetMapping("/productos") // Endpoints relacionados con productos
@@ -154,93 +168,124 @@ public class FybecaController {
         }
     }
 
-    //Subir template de ventas
+    @DeleteMapping("/eliminar-ventas-forma-masiva")
+    public ResponseEntity<Void> eliminarVentas(@RequestBody List<Long> ids) {
+        if (ventaService.eliminarVentas(ids)) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @PostMapping("/subir-archivo")
     public ResponseEntity<String> subirArchivo(@RequestParam("file") MultipartFile file) {
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
+            List<Venta> ventas = new ArrayList<>();
 
-            // Leer la fila 2 (índice 1)
-            Row row = sheet.getRow(1);
-            if (row == null) {
-                return new ResponseEntity<>("La fila 2 no existe en el archivo", HttpStatus.BAD_REQUEST);
-            }
+            // Iterar sobre todas las filas a partir de la fila 2 (índice 1)
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row != null) {
+                    Venta venta = new Venta();
 
-            // Extraer los datos de cada celda con chequeo de tipo
-            Venta venta = new Venta();
+                    if (row.getCell(0) != null && row.getCell(0).getCellType() == CellType.NUMERIC) {
+                        venta.setAnio((int) row.getCell(0).getNumericCellValue());
+                    }
+                    if (row.getCell(1) != null && row.getCell(1).getCellType() == CellType.NUMERIC) {
+                        venta.setMes((int) row.getCell(1).getNumericCellValue());
+                    }
+                    if (row.getCell(2) != null) {
+                        if (row.getCell(2).getCellType() == CellType.NUMERIC) {
+                            venta.setVenta_Dolares(row.getCell(2).getNumericCellValue());
+                        } else if (row.getCell(2).getCellType() == CellType.STRING) {
+                            try {
+                                venta.setVenta_Dolares(Double.parseDouble(row.getCell(2).getStringCellValue()));
+                            } catch (NumberFormatException e) {
+                                // Manejar el error si el valor no es un número válido
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    if (row.getCell(3) != null && row.getCell(3).getCellType() == CellType.NUMERIC) {
+                        venta.setVenta_Unidad(row.getCell(3).getNumericCellValue());
+                    }
+                    if (row.getCell(4) != null) {
+                        if (row.getCell(4).getCellType() == CellType.STRING) {
+                            venta.setCodBarra(row.getCell(4).getStringCellValue());
+                        } else if (row.getCell(4).getCellType() == CellType.NUMERIC) {
+                            row.getCell(4).setCellType(CellType.STRING);
+                            venta.setCodBarra(row.getCell(4).getStringCellValue());
+                        }
+                    }
+                    if (row.getCell(5) != null) {
+                        if (row.getCell(5).getCellType() == CellType.STRING) {
+                            venta.setCod_Pdv(row.getCell(5).getStringCellValue());
+                        } else if (row.getCell(5).getCellType() == CellType.NUMERIC) {
+                            row.getCell(5).setCellType(CellType.STRING);
+                            venta.setCod_Pdv(row.getCell(5).getStringCellValue());
+                        }
+                    }
+                    if (row.getCell(6) != null) {
+                        if (row.getCell(6).getCellType() == CellType.STRING) {
+                            venta.setPdv(row.getCell(6).getStringCellValue());
+                        } else if (row.getCell(6).getCellType() == CellType.NUMERIC) {
+                            row.getCell(6).setCellType(CellType.STRING);
+                            venta.setPdv(row.getCell(6).getStringCellValue());
+                        }
+                    }
+                    if (row.getCell(7) != null) {
+                        if (row.getCell(7).getCellType() == CellType.NUMERIC) {
+                            venta.setStock_Dolares(row.getCell(7).getNumericCellValue());
+                        } else if (row.getCell(7).getCellType() == CellType.STRING) {
+                            try {
+                                venta.setStock_Dolares(Double.parseDouble(row.getCell(7).getStringCellValue()));
+                            } catch (NumberFormatException e) {
+                                // Manejar el error si el valor no es un número válido
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    if (row.getCell(8) != null && row.getCell(8).getCellType() == CellType.NUMERIC) {
+                        venta.setStock_Unidades(row.getCell(8).getNumericCellValue());
+                    }
 
-            if (row.getCell(0) != null && row.getCell(0).getCellType() == CellType.NUMERIC) {
-                venta.setAnio((int) row.getCell(0).getNumericCellValue());
-            }
-            if (row.getCell(1) != null && row.getCell(1).getCellType() == CellType.NUMERIC) {
-                venta.setMes((int) row.getCell(1).getNumericCellValue());
-            }
-            if (row.getCell(2) != null && row.getCell(2).getCellType() == CellType.NUMERIC) {
-                venta.setVenta_Dolares(row.getCell(2).getNumericCellValue());
-            }
-            if (row.getCell(3) != null && row.getCell(3).getCellType() == CellType.NUMERIC) {
-                venta.setVenta_Unidad(row.getCell(3).getNumericCellValue());
-            }
-            if (row.getCell(4) != null) {
-                if (row.getCell(4).getCellType() == CellType.STRING) {
-                    venta.setCodBarra(row.getCell(4).getStringCellValue());
-                } else if (row.getCell(4).getCellType() == CellType.NUMERIC) {
-                    row.getCell(4).setCellType(CellType.STRING);
-                    venta.setCodBarra(row.getCell(4).getStringCellValue());
+                    // Llamar al servicio para cargar los datos del producto
+                    boolean datosCargados = ventaService.cargarDatosDeProducto(venta);
+
+                    if (!datosCargados) {
+                        return new ResponseEntity<>("El código de barra no existe en el sistema", HttpStatus.BAD_REQUEST);
+                    }
+
+                    // Agregar la venta a la lista
+                    ventas.add(venta);
                 }
             }
-            if (row.getCell(5) != null) {
-                if (row.getCell(5).getCellType() == CellType.STRING) {
-                    venta.setCod_Pdv(row.getCell(5).getStringCellValue());
-                } else if (row.getCell(5).getCellType() == CellType.NUMERIC) {
-                    row.getCell(5).setCellType(CellType.STRING);
-                    venta.setCod_Pdv(row.getCell(5).getStringCellValue());
-                }
-            }
-            if (row.getCell(6) != null) {
-                if (row.getCell(6).getCellType() == CellType.STRING) {
-                    venta.setPdv(row.getCell(6).getStringCellValue());
-                } else if (row.getCell(6).getCellType() == CellType.NUMERIC) {
-                    row.getCell(6).setCellType(CellType.STRING);
-                    venta.setPdv(row.getCell(6).getStringCellValue());
-                }
-            }
-            if (row.getCell(7) != null && row.getCell(7).getCellType() == CellType.NUMERIC) {
-                venta.setStock_Dolares(row.getCell(7).getNumericCellValue());
-            }
-            if (row.getCell(8) != null && row.getCell(8).getCellType() == CellType.NUMERIC) {
-                venta.setStock_Unidades((int) row.getCell(8).getNumericCellValue());
-            }
 
-            // Llamar al servicio para cargar los datos del producto
-            procesarVenta(venta);
+            // Procesar las ventas en paralelo
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            int batchSize = 100;
+            for (int i = 0; i < ventas.size(); i += batchSize) {
+                int start = i;
+                int end = Math.min(i + batchSize, ventas.size());
+                List<Venta> batchList = ventas.subList(start, end);
+                executor.submit(() -> ventaService.guardarVentas(batchList));
+            }
+            executor.shutdown();
+            executor.awaitTermination(1, TimeUnit.HOURS);
 
             return ResponseEntity.ok("Archivo subido y procesado correctamente.");
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             return new ResponseEntity<>("Error al procesar el archivo", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
-    public void procesarVenta(Venta venta) {
-        // Limpiar y validar el código de barra en el controlador
-        String codBarra = venta.getCodBarra();
-
-        if (codBarra == null || codBarra.trim().isEmpty()) {
-            System.out.println("El código de barra no puede ser nulo o vacío");
-            return;  // No realizamos la consulta si el código de barra es inválido
-        }
-
-        // Eliminar espacios en blanco al principio y al final
-        venta.setCodBarra(codBarra.trim());
-
-        // Llamar al servicio para cargar los datos del producto
-        ventaService.cargarDatosDeProducto(venta);
-
-        // Guardar la venta en la base de datos
-        ventaService.guardarVenta(venta);
+    
+    // Endpoint para obtener todas las marcas disponibles
+    @GetMapping("/marcas-ventas")
+    public List<String> obtenerMarcasDisponibles() {
+        return ventaService.obtenerMarcasDisponibles();
     }
-
     
     // Métodos para mantenimiento de clientes
     @GetMapping("/mantenimiento/clientes")
@@ -367,5 +412,51 @@ public class FybecaController {
         } catch (IllegalArgumentException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST);
         }
+    }
+
+
+    //CRUD de tabla Tipo Mueble
+
+    @PostMapping("/crear-nuevo-tipo-mueble")
+    public ResponseEntity<TipoMueble> crearTipoMueble(@RequestBody TipoMueble tipoMueble) {
+        TipoMueble nuevoTipoMueble = tipoMuebleService.guardarTipoMueble(tipoMueble);
+        return ResponseEntity.ok(nuevoTipoMueble);
+    }
+
+    @GetMapping("/find-all-tipo-mueble")
+    public ResponseEntity<List<TipoMueble>> obtenerTodosLosTiposMueble() {
+        List<TipoMueble> tiposMueble = tipoMuebleService.obtenerTodosLosTiposMueble();
+        return ResponseEntity.ok(tiposMueble);
+    }
+
+    @GetMapping("/find-id-tipo-mueble/{id}")
+    public ResponseEntity<TipoMueble> obtenerTipoMueblePorId(@PathVariable Long id) {
+        Optional<TipoMueble> tipoMueble = tipoMuebleService.obtenerTipoMueblePorId(id);
+        return tipoMueble.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/actualizar-tipo-mueble/{id}")
+    public ResponseEntity<TipoMueble> actualizarTipoMueble(@PathVariable Long id, @RequestBody TipoMueble nuevoTipoMueble) {
+        try {
+            TipoMueble tipoMuebleActualizado = tipoMuebleService.actualizarTipoMueble(id, nuevoTipoMueble);
+            return ResponseEntity.ok(tipoMuebleActualizado);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/eliminar-id-tipo-mueble/{id}")
+    public ResponseEntity<Void> eliminarTipoMueble(@PathVariable Long id) {
+        if (tipoMuebleService.eliminarTipoMueble(id)) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/subir-template-tipo-muebles")
+    public ResponseEntity<List<TipoMueble>> subirTipoMuebles(@RequestParam("file") MultipartFile file) {
+        List<TipoMueble> tipoMuebles = tipoMuebleService.cargarTipoMueblesDesdeArchivo(file);
+        return ResponseEntity.ok(tipoMuebles);
     }
 }

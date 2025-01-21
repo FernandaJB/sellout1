@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faEdit, faFileUpload } from "@fortawesome/free-solid-svg-icons";
 import "./css/fybeca.css"; // Asegúrate de tener tu archivo CSS
 
 const FybecaMantenimientoProducto = () => {
@@ -11,6 +13,7 @@ const FybecaMantenimientoProducto = () => {
   const [file, setFile] = useState(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage] = useState(2000); // Paginación por lote de 2000 productos
+  const [filter, setFilter] = useState(""); // Estado para almacenar el filtro
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -186,6 +189,14 @@ const FybecaMantenimientoProducto = () => {
     }
   };
 
+  // Filtrar productos por el filtro ingresado
+  const filteredProductos = productos.filter((producto) => {
+    return (
+      producto.cod_Item.toLowerCase().includes(filter.toLowerCase()) ||
+      producto.cod_Barra_Sap.toLowerCase().includes(filter.toLowerCase())
+    );
+  });
+
   // Cargar productos y clientes al inicio
   useEffect(() => {
     loadProductos();
@@ -208,10 +219,21 @@ const FybecaMantenimientoProducto = () => {
           <div className="buttons-top">
             <div className="upload-section">
               <h3>Cargar Archivo XLSX</h3>
-              <input type="file" onChange={handleFileChange} />
+              <div className="file-upload" onClick={() => document.getElementById('fileInput').click()}>
+                <FontAwesomeIcon icon={faFileUpload} /> Elegir Archivo
+              </div>
+              <input
+                type="file"
+                id="fileInput"
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+              />
               <button onClick={handleUploadFile} className="btn-upload">
                 Cargar Productos
               </button>
+              <a href="/TEMPLATE CODIGOS BARRA Y ITEM.xlsx" download="TEMPLATE CODIGOS BARRA Y ITEM.xlsx">
+                <button className="tomato-button">Descargar Template</button>
+              </a>
             </div>
 
             <button
@@ -221,6 +243,17 @@ const FybecaMantenimientoProducto = () => {
             >
               Eliminar Seleccionados
             </button>
+          </div>
+
+          {/* Filtro de productos */}
+          <div className="filter-section">
+            <input
+              type="text"
+              placeholder="Filtrar productos"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)} // Actualizar el estado del filtro
+              className="filter-input"
+            />
           </div>
 
           <h2>Lista de Productos</h2>
@@ -248,7 +281,7 @@ const FybecaMantenimientoProducto = () => {
                 </tr>
               </thead>
               <tbody>
-                {productos.map((producto) => (
+                {filteredProductos.map((producto) => (
                   <tr key={producto.id}>
                     <td>
                       <input
@@ -267,12 +300,11 @@ const FybecaMantenimientoProducto = () => {
                     <td>{producto.cod_Item}</td>
                     <td>{producto.cod_Barra_Sap}</td>
                     <td>
-                      <button
+                      <FontAwesomeIcon
+                        icon={faEdit}
                         onClick={() => handleEdit(producto.id)}
-                        className="btn-edit"
-                      >
-                        Editar
-                      </button>
+                        className="icon-edit"
+                      />
                     </td>
                   </tr>
                 ))}
@@ -331,4 +363,4 @@ const FybecaMantenimientoProducto = () => {
   );
 };
 
-export default FybecaMantenimientoProducto;
+export default FybecaMantenimientoProducto; 

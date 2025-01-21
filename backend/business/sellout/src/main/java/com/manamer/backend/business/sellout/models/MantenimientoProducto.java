@@ -1,5 +1,6 @@
 package com.manamer.backend.business.sellout.models;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -14,6 +15,7 @@ public class MantenimientoProducto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+     @Column(name = "cod_item")
     private String cod_Item;
 
     private String cod_Barra_Sap;

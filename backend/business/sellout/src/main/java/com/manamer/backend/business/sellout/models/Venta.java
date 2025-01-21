@@ -40,7 +40,7 @@ public class Venta {
     private String descripcion;
     private String pdv;
     private double stock_Dolares;
-    private int stock_Unidades;
+    private double stock_Unidades;
 
      // Cambiar 'Cliente' por 'MantenimientoCliente'
      @ManyToOne(fetch = FetchType.EAGER)

@@ -11,9 +11,13 @@ import jakarta.persistence.Query;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class VentaService {
@@ -29,69 +33,111 @@ public class VentaService {
     private EntityManager entityManager;
 
     /**
-     * Método para cargar los datos del producto a partir del codBarra.
+     * Método para cargar los datos del producto a partir del cod_Item.
      * 
-     * @param venta Entidad de Venta que contiene el codBarra y donde se asignarán los datos.
+     * @param venta Entidad de Venta que contiene el cod_Item y donde se asignarán los datos.
+     * @return boolean indicando si los datos se cargaron correctamente.
      */
-    public void cargarDatosDeProducto(Venta venta) {
-        // Limpia el código de barra (eliminar espacios en blanco) antes de la comparación
-        String codBarra = venta.getCodBarra();
+    public boolean cargarDatosDeProducto(Venta venta) {
+        // Limpia el código de item (eliminar espacios en blanco) antes de la comparación
+        String codItem = venta.getCodBarra();
         
         // Mostrar el valor que llega para verificar si está correcto
-        System.out.println("Código de barra recibido: '" + codBarra + "'");
+        System.out.println("Código de item recibido: '" + codItem + "'");
         
-        if (codBarra == null || codBarra.trim().isEmpty()) {
-            System.out.println("El código de barra no puede ser nulo o vacío");
-            return;  // No realizamos la consulta si el código de barra es inválido
+        if (codItem == null || codItem.trim().isEmpty()) {
+            System.out.println("El código de item no puede ser nulo o vacío");
+            return false;  // No realizamos la consulta si el código de item es inválido
         }
         
         // Eliminar espacios en blanco al principio y al final
-        codBarra = codBarra.trim();
+        codItem = codItem.trim();
         
-        // Consulta SQL nativa para obtener los datos del producto según el codBarra
-        String queryStr = "SELECT sapProd.Marca, sapProd.Descripcion, sapProd.CodProd, sapProd.Descripcion "
-                         + "FROM SAPHANA..CG3_360CORP.SAP_Prod sapProd "
-                         + "WHERE sapProd.CodBarra = :codBarra";
+        // Consulta SQL nativa para verificar si el codItem existe y obtener el cod_Barra_Sap
+        String queryStr = "SELECT p.cod_Barra_Sap "
+                         + "FROM SELLOUT.dbo.mantenimiento_producto p "
+                         + "WHERE p.cod_Item = :codItem";
         
-        // Ejecutar la consulta
+        // Ejecutar la consulta para obtener el cod_Barra_Sap
         Query query = entityManager.createNativeQuery(queryStr);
-        query.setParameter("codBarra", codBarra);
+        query.setParameter("codItem", codItem);
         
         try {
             // Obtener los resultados
-            Object[] result = (Object[]) query.getSingleResult();
-        
-            if (result != null && result.length == 4) {
-                // Asignamos los valores a la entidad Venta
-                venta.setMarca((String) result[0]);  // Marca
-                venta.setNombre_Producto((String) result[1]);  // Descripción se asigna a Nombre_Producto
-                venta.setCodigo_Sap((String) result[2]);  // Código SAP
-                venta.setDescripcion((String) result[3]);  // Descripción del Producto
+            List<String> codBarraSapList = query.getResultList();
+            
+            if (codBarraSapList.isEmpty()) {
+                System.out.println("No se encontró ningún código de barra SAP para el código de item: " + codItem);
+                return false;
+            }
+            
+            // Tomar el primer resultado (o manejar múltiples resultados según tu lógica de negocio)
+            String codBarraSap = codBarraSapList.get(0);
+            
+            if (codBarraSap != null && !codBarraSap.trim().isEmpty()) {
+                // Asignar el cod_Barra_Sap a la entidad Venta
+                venta.setCodBarra(codBarraSap.trim());
                 
-                // Obtener el id del producto de la tabla mantenimiento_producto
-                MantenimientoProducto producto = ventaRepository.findMantenimientoProductoByCodBarra(codBarra);
-                if (producto != null) {
-                    venta.setMantenimientoProducto(producto); // Asignar el producto
-                } else {
-                    System.out.println("No se encontró ningún producto en mantenimiento_producto con el código de barra: " + codBarra);
+                // Consulta SQL nativa para obtener los datos del producto según el cod_Barra_Sap
+                queryStr = "SELECT c.id AS ClienteID, c.cod_Cliente, c.nombre_Cliente, c.ciudad, c.codigo_Proveedor, "
+                         + "p.id AS IdProducto, p.cod_Item, p.cod_Barra_Sap, sapProd.CodProd, sapProd.CodBarra, "
+                         + "sapProd.Descripcion AS DescripcionProducto, sapProd.Marca "
+                         + "FROM SELLOUT.dbo.mantenimiento_producto p "
+                         + "LEFT JOIN SAPHANA..CG3_360CORP.SAP_Prod sapProd ON p.cod_Barra_Sap = sapProd.CodBarra "
+                         + "CROSS JOIN (SELECT TOP 1 * FROM SELLOUT.dbo.mantenimiento_cliente) c "
+                         + "WHERE sapProd.CodBarra = :codBarraSap";
+                
+                // Ejecutar la consulta
+                query = entityManager.createNativeQuery(queryStr);
+                query.setParameter("codBarraSap", codBarraSap);
+                
+                // Obtener los resultados
+                Object[] result = (Object[]) query.getSingleResult();
+            
+                if (result != null && result.length == 12) {
+                    // Asignamos los valores a la entidad Venta
+                    venta.setMantenimientoCliente(new MantenimientoCliente());
+                    venta.getMantenimientoCliente().setId(((Number) result[0]).longValue());  // ClienteID
+                    venta.getMantenimientoCliente().setCod_Cliente((String) result[1]);  // cod_Cliente
+                    venta.getMantenimientoCliente().setNombre_Cliente((String) result[2]);  // nombre_Cliente
+                    venta.getMantenimientoCliente().setCiudad((String) result[3]);  // ciudad
+                    venta.getMantenimientoCliente().setCodigo_Proveedor((String) result[4]);  // codigo_Proveedor
+                    
+                    venta.setMantenimientoProducto(new MantenimientoProducto());
+                    venta.getMantenimientoProducto().setId(((Number) result[5]).longValue());  // IdProducto
+                    venta.getMantenimientoProducto().setCod_Item((String) result[6]);  // cod_Item
+                    venta.getMantenimientoProducto().setCod_Barra_Sap((String) result[7]);  // cod_Barra_Sap
+                    
+                    venta.setCodigo_Sap((String) result[8]);  // CodProd
+                    venta.setCodBarra((String) result[9]);  // CodBarra
+                    venta.setDescripcion((String) result[10]);  // DescripcionProducto
+                    venta.setNombre_Producto((String) result[10]);  // DescripcionProducto también se asigna a Nombre_Producto
+                    venta.setMarca((String) result[11]);  // Marca
+                    return true;
                 }
-
-                // Asignar el id del cliente de la tabla mantenimiento_cliente
-                MantenimientoCliente cliente = new MantenimientoCliente();
-                cliente.setId(5969L); // Asignar el id fijo
-                venta.setMantenimientoCliente(cliente); // Asignar el cliente
+            } else {
+                System.out.println("No se encontró ningún código de barra SAP para el código de item: " + codItem);
+                return false;
             }
         } catch (NoResultException e) {
             // Manejar el caso donde no se encuentra ningún resultado
-            System.out.println("No se encontró ningún producto con el código de barra: " + codBarra);
+            System.out.println("No se encontró ningún producto con el código de item: " + codItem);
+            return false;
+        }
+        return false;
+    }
+
+    @Transactional
+    public void guardarVentas(List<Venta> ventas) {
+        int batchSize = 50;
+        for (int i = 0; i < ventas.size(); i += batchSize) {
+            int end = Math.min(i + batchSize, ventas.size());
+            List<Venta> batchList = ventas.subList(i, end);
+            ventaRepository.saveAll(batchList);
+            ventaRepository.flush();
         }
     }
 
-    
-    public Venta guardarVenta(Venta venta) {
-        return ventaRepository.save(venta);
-    }
-    
     // Obtener todas las ventas
     public List<Venta> obtenerTodasLasVentas() {
         return ventaRepository.findAll();
@@ -130,5 +176,23 @@ public class VentaService {
             ventaRepository.delete(venta);
             return true;
         }).orElse(false);
+    }
+
+    // Eliminar varias ventas por sus IDs
+    public boolean eliminarVentas(List<Long> ids) {
+        try {
+            List<Venta> ventas = ventaRepository.findAllById(ids);
+            ventaRepository.deleteAll(ventas);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Obtener todas las marcas disponibles en las ventas
+    public List<String> obtenerMarcasDisponibles() {
+        String queryStr = "SELECT DISTINCT v.marca FROM Venta v WHERE v.marca IS NOT NULL";
+        Query query = entityManager.createQuery(queryStr);
+        return query.getResultList();
     }
 }

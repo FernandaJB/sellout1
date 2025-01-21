@@ -1,0 +1,337 @@
+import React, { useEffect, useState, useRef } from "react";
+import "./css/fybeca.css";
+import "@fortawesome/fontawesome-free/css/all.min.css"; // Importar Font Awesome
+
+const FybecaTipoMueble = () => {
+  const [tipoMuebles, setTipoMuebles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [editTipoMueble, setEditTipoMueble] = useState(null);
+  const [filter, setFilter] = useState("");
+  const [filteredTipoMuebles, setFilteredTipoMuebles] = useState([]);
+  const [filterTipoDisplayEssence, setFilterTipoDisplayEssence] = useState("");
+  const [filterTipoMuebleDisplayCatrice, setFilterTipoMuebleDisplayCatrice] = useState("");
+  const fileInputRef = useRef(null);
+
+  // Función para cargar los tipos de mueble desde la API
+  const loadTipoMuebles = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("http://localhost:8082/api/fybeca/find-all-tipo-mueble");
+      if (!response.ok) throw new Error(`Error al cargar tipos de mueble: ${response.statusText}`);
+      const data = await response.json();
+      setTipoMuebles(data);
+      setFilteredTipoMuebles(data);
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para crear un nuevo tipo de mueble
+  const crearTipoMueble = async (tipoMueble) => {
+    try {
+      const response = await fetch("http://localhost:8082/api/fybeca/crear-nuevo-tipo-mueble", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(tipoMueble),
+      });
+
+      if (!response.ok) throw new Error(`Error al crear tipo de mueble: ${response.statusText}`);
+
+      const nuevoTipoMueble = await response.json();
+      setTipoMuebles([...tipoMuebles, nuevoTipoMueble]);
+      setFilteredTipoMuebles([...tipoMuebles, nuevoTipoMueble]);
+      setSuccessMessage("Tipo de mueble creado correctamente.");
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  // Función para actualizar un tipo de mueble
+  const actualizarTipoMueble = async (tipoMueble) => {
+    try {
+      const response = await fetch(`http://localhost:8082/api/fybeca/actualizar-tipo-mueble/${tipoMueble.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(tipoMueble),
+      });
+
+      if (!response.ok) throw new Error(`Error al actualizar tipo de mueble: ${response.statusText}`);
+
+      const tipoMuebleActualizado = await response.json();
+      const updatedTipoMuebles = tipoMuebles.map((tm) => (tm.id === tipoMuebleActualizado.id ? tipoMuebleActualizado : tm));
+      setTipoMuebles(updatedTipoMuebles);
+      setFilteredTipoMuebles(updatedTipoMuebles);
+      setSuccessMessage("Tipo de mueble actualizado correctamente.");
+      setEditTipoMueble(null);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  // Función para eliminar un tipo de mueble
+  const eliminarTipoMueble = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:8082/api/fybeca/eliminar-id-tipo-mueble/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error(`Error al eliminar tipo de mueble: ${response.statusText}`);
+
+      const updatedTipoMuebles = tipoMuebles.filter((tm) => tm.id !== id);
+      setTipoMuebles(updatedTipoMuebles);
+      setFilteredTipoMuebles(updatedTipoMuebles);
+      setSuccessMessage("Tipo de mueble eliminado correctamente.");
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  // Función para subir un archivo XLSX
+  const subirArchivo = async (e) => {
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("http://localhost:8082/api/fybeca/subir-template-tipo-muebles", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error(`Error al subir archivo: ${response.statusText}`);
+
+      const data = await response.json();
+      setTipoMuebles([...tipoMuebles, ...data]);
+      setFilteredTipoMuebles([...tipoMuebles, ...data]);
+      setSuccessMessage("Archivo subido correctamente.");
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  // Función para manejar el cambio en el campo de entrada del filtro
+  const handleFilterChange = (e) => {
+    setFilter(e.target.value);
+  };
+
+  // Función para aplicar el filtro
+  const applyFilter = () => {
+    const filtered = tipoMuebles.filter((tipoMueble) => {
+      const searchTerm = filter.toLowerCase();
+      return (
+        (filter === "" || tipoMueble.cod_Pdv.toLowerCase().includes(searchTerm) ||
+        tipoMueble.nombre_Pdv.toLowerCase().includes(searchTerm) ||
+        (tipoMueble.mantenimientoCliente && (
+          tipoMueble.mantenimientoCliente.cod_Cliente.toLowerCase().includes(searchTerm) ||
+          tipoMueble.mantenimientoCliente.nombre_Cliente.toLowerCase().includes(searchTerm) ||
+          tipoMueble.mantenimientoCliente.ciudad.toLowerCase().includes(searchTerm)
+        ))) &&
+        (filterTipoDisplayEssence === "" || tipoMueble.tipo_Display_Essence === filterTipoDisplayEssence) &&
+        (filterTipoMuebleDisplayCatrice === "" || tipoMueble.tipo_Mueble_Display_Catrice === filterTipoMuebleDisplayCatrice)
+      );
+    });
+    setFilteredTipoMuebles(filtered);
+  };
+
+  // Función para limpiar los filtros
+  const clearFilters = () => {
+    setFilter("");
+    setFilterTipoDisplayEssence("");
+    setFilterTipoMuebleDisplayCatrice("");
+    setFilteredTipoMuebles(tipoMuebles);
+  };
+
+  // Cargar los tipos de mueble al montar el componente
+  useEffect(() => {
+    loadTipoMuebles();
+  }, []);
+
+  return (
+    <div className="container">
+      <h1>Tipos de Mueble Fybeca</h1>
+
+      {error && <p className="error">{error}</p>}
+      {successMessage && <p className="success">{successMessage}</p>}
+
+      <h2>Tipos de Mueble</h2>
+
+      <div className="upload-section">
+        <button onClick={() => setEditTipoMueble({ id: null, cod_Pdv: "", nombre_Pdv: "", tipo_Display_Essence: "", tipo_Mueble_Display_Catrice: "", cliente: { cod_Cliente: "", nombre_Cliente: "", ciudad: "" } })}>
+          Crear Tipo de Mueble
+        </button>
+        <div className="file-upload" onClick={() => fileInputRef.current.click()}>
+          <i className="fas fa-file-upload"></i> Elegir Archivo
+        </div>
+        <input
+          type="file"
+          accept=".xlsx"
+          onChange={subirArchivo}
+          ref={fileInputRef}
+          style={{ display: "none" }}
+        />
+        <a href="/TEMPLATE DE TIPO DE MUEBLE.xlsx" download className="btn-download">
+          Descargar Template
+        </a>
+      </div>
+
+      <div className="filter-section">
+        <label htmlFor="filter">Filtrar:</label>
+        <input
+          type="text"
+          id="filter"
+          value={filter}
+          onChange={handleFilterChange}
+        />
+        <label htmlFor="filterTipoDisplayEssence">Tipo Display Essence:</label>
+        <select
+          id="filterTipoDisplayEssence"
+          value={filterTipoDisplayEssence}
+          onChange={(e) => setFilterTipoDisplayEssence(e.target.value)}
+        >
+          <option value="">Todos</option>
+          {Array.from(new Set(tipoMuebles.map((tm) => tm.tipo_Display_Essence))).map((tipo) => (
+            <option key={tipo} value={tipo}>{tipo}</option>
+          ))}
+        </select>
+        <label htmlFor="filterTipoMuebleDisplayCatrice">Tipo Mueble Display Catrice:</label>
+        <select
+          id="filterTipoMuebleDisplayCatrice"
+          value={filterTipoMuebleDisplayCatrice}
+          onChange={(e) => setFilterTipoMuebleDisplayCatrice(e.target.value)}
+        >
+          <option value="">Todos</option>
+          {Array.from(new Set(tipoMuebles.map((tm) => tm.tipo_Mueble_Display_Catrice))).map((tipo) => (
+            <option key={tipo} value={tipo}>{tipo}</option>
+          ))}
+        </select>
+        <button onClick={applyFilter}>Aplicar Filtro</button>
+        <button onClick={clearFilters} className="btn-clear-filters">
+          <i className="fas fa-times-circle"></i> Limpiar Filtros
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="loading">Cargando tipos de mueble...</p>
+      ) : filteredTipoMuebles.length === 0 ? (
+        <p>No hay tipos de mueble disponibles.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Código Cliente</th>
+              <th>Nombre Cliente</th>
+              <th>Ciudad</th>
+              <th>Código PDV</th>
+              <th>Nombre PDV</th>
+              <th>Tipo Display Essence</th>
+              <th>Tipo Mueble Display Catrice</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredTipoMuebles.map((tipoMueble) => (
+              <tr key={tipoMueble.id}>
+                <td>{tipoMueble.mantenimientoCliente ? tipoMueble.mantenimientoCliente.cod_Cliente : "N/A"}</td>
+                <td>{tipoMueble.mantenimientoCliente ? tipoMueble.mantenimientoCliente.nombre_Cliente : "N/A"}</td>
+                <td>{tipoMueble.mantenimientoCliente ? tipoMueble.mantenimientoCliente.ciudad : "N/A"}</td>
+                <td>{tipoMueble.cod_Pdv}</td>
+                <td>{tipoMueble.nombre_Pdv}</td>
+                <td>{tipoMueble.tipo_Display_Essence}</td>
+                <td>{tipoMueble.tipo_Mueble_Display_Catrice}</td>
+                <td>
+                  <button className="btn-crud" onClick={() => setEditTipoMueble(tipoMueble)} title="Editar">
+                    <i className="fas fa-pencil-alt"></i>
+                  </button>
+                  <button className="btn-crud" onClick={() => eliminarTipoMueble(tipoMueble.id)} title="Eliminar">
+                    <i className="fas fa-trash-alt"></i>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {editTipoMueble && (
+        <div className="modal">
+          <div className="modal-content">
+            <h2>{editTipoMueble.id ? "Editar Tipo de Mueble" : "Crear Tipo de Mueble"}</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (editTipoMueble.id) {
+                  actualizarTipoMueble(editTipoMueble);
+                } else {
+                  crearTipoMueble(editTipoMueble);
+                }
+              }}
+            >
+              <label>Código Cliente:</label>
+              <input
+                type="text"
+                name="cod_Cliente"
+                value={editTipoMueble.mantenimientoCliente ? editTipoMueble.mantenimientoCliente.cod_Cliente : ""}
+                onChange={(e) => setEditTipoMueble({ ...editTipoMueble, mantenimientoCliente: { ...editTipoMueble.mantenimientoCliente, cod_Cliente: e.target.value } })}
+              />
+              <label>Nombre Cliente:</label>
+              <input
+                type="text"
+                name="nombre_Cliente"
+                value={editTipoMueble.mantenimientoCliente ? editTipoMueble.mantenimientoCliente.nombre_Cliente : ""}
+                onChange={(e) => setEditTipoMueble({ ...editTipoMueble, mantenimientoCliente: { ...editTipoMueble.mantenimientoCliente, nombre_Cliente: e.target.value } })}
+              />
+              <label>Ciudad:</label>
+              <input
+                type="text"
+                name="ciudad"
+                value={editTipoMueble.mantenimientoCliente ? editTipoMueble.mantenimientoCliente.ciudad : ""}
+                onChange={(e) => setEditTipoMueble({ ...editTipoMueble, mantenimientoCliente: { ...editTipoMueble.mantenimientoCliente, ciudad: e.target.value } })}
+              />
+              <label>Código PDV:</label>
+              <input
+                type="text"
+                name="cod_Pdv"
+                value={editTipoMueble.cod_Pdv}
+                onChange={(e) => setEditTipoMueble({ ...editTipoMueble, cod_Pdv: e.target.value })}
+              />
+              <label>Nombre PDV:</label>
+              <input
+                type="text"
+                name="nombre_Pdv"
+                value={editTipoMueble.nombre_Pdv}
+                onChange={(e) => setEditTipoMueble({ ...editTipoMueble, nombre_Pdv: e.target.value })}
+              />
+              <label>Tipo Display Essence:</label>
+              <input
+                type="text"
+                name="tipo_Display_Essence"
+                value={editTipoMueble.tipo_Display_Essence}
+                onChange={(e) => setEditTipoMueble({ ...editTipoMueble, tipo_Display_Essence: e.target.value })}
+              />
+              <label>Tipo Mueble Display Catrice:</label>
+              <input
+                type="text"
+                name="tipo_Mueble_Display_Catrice"
+                value={editTipoMueble.tipo_Mueble_Display_Catrice}
+                onChange={(e) => setEditTipoMueble({ ...editTipoMueble, tipo_Mueble_Display_Catrice: e.target.value })}
+              />
+              <button type="submit" className="btn-crud">Guardar Cambios</button>
+              <button type="button" className="btn-crud" onClick={() => setEditTipoMueble(null)}>Cancelar</button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FybecaTipoMueble;
