@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { FaSignOutAlt } from 'react-icons/fa';
+import { FaSignOutAlt, FaMedkit } from 'react-icons/fa'; // Importa el ícono de medicina
 import Login from './login';
 import Registrar from './Registrar';
 import OlvidarContraseña from './OlvidarContraseña';
@@ -14,6 +14,7 @@ import './App.css';
 const App = () => {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('');
+  const [isFybecaMenuOpen, setFybecaMenuOpen] = useState(false); // Estado para controlar el menú desplegable
 
   useEffect(() => {
     const accessToken = localStorage.getItem('access_token');
@@ -60,31 +61,43 @@ const App = () => {
 
     return (
       <nav className="tab-menu">
-       
-        <button 
-          className={activeTab === 'FybecaTemplate' ? 'active' : ''}
-          onClick={() => setActiveTab('FybecaTemplate')}
+        <div
+          className="dropdown"
+          onMouseEnter={() => setFybecaMenuOpen(true)}
+          onMouseLeave={() => setFybecaMenuOpen(false)}
         >
-          Fybeca - Ventas
-        </button>
-        <button 
-          className={activeTab === 'FybecaMantenimientoCliente' ? 'active' : ''}
-          onClick={() => setActiveTab('FybecaMantenimientoCliente')}
-        >
-          Fybeca Matenimiento Cliente
-        </button>
-        <button 
-          className={activeTab === 'FybecaMantenimientoProducto' ? 'active' : ''}
-          onClick={() => setActiveTab('FybecaMantenimientoProducto')}
-        >
-          Fybeca Matenimiento Producto
-        </button>
-        <button 
-          className={activeTab === 'FybecaTipoMueble' ? 'active' : ''}
-          onClick={() => setActiveTab('FybecaTipoMueble')}
-        >
-          Fybeca Mantenimiento Tipo Mueble
-        </button>
+          <button className="dropdown-button">
+            <FaMedkit /> Fybeca
+          </button>
+          {isFybecaMenuOpen && (
+            <div className="dropdown-content">
+              <button
+                className={activeTab === 'FybecaTemplate' ? 'active' : ''}
+                onClick={() => setActiveTab('FybecaTemplate')}
+              >
+                Fybeca - Ventas
+              </button>
+              <button
+                className={activeTab === 'FybecaMantenimientoCliente' ? 'active' : ''}
+                onClick={() => setActiveTab('FybecaMantenimientoCliente')}
+              >
+                Fybeca Mantenimiento Cliente
+              </button>
+              <button
+                className={activeTab === 'FybecaMantenimientoProducto' ? 'active' : ''}
+                onClick={() => setActiveTab('FybecaMantenimientoProducto')}
+              >
+                Fybeca Mantenimiento Producto
+              </button>
+              <button
+                className={activeTab === 'FybecaTipoMueble' ? 'active' : ''}
+                onClick={() => setActiveTab('FybecaTipoMueble')}
+              >
+                Fybeca Mantenimiento Tipo Mueble
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
     );
   };
@@ -112,14 +125,8 @@ const App = () => {
                 {renderTabMenu()}
                 <div className="tab-content">
                   {activeTab === 'FybecaTemplate' && <FybecaTemplate />}
-                </div>
-                <div className="tab-content">
                   {activeTab === 'FybecaMantenimientoCliente' && <FybecaMantenimientoCliente />}
-                </div>
-                <div className="tab-content">
                   {activeTab === 'FybecaMantenimientoProducto' && <FybecaMantenimientoProducto />}
-                </div>
-                <div className="tab-content">
                   {activeTab === 'FybecaTipoMueble' && <FybecaTipoMueble />}
                 </div>
               </div>

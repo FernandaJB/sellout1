@@ -14,6 +14,7 @@ const Fybeca = () => {
   const [filterMarca, setFilterMarca] = useState(""); // Estado para almacenar el filtro de marca
   const [marcas, setMarcas] = useState([]); // Estado para almacenar las marcas disponibles
   const [selectedVentas, setSelectedVentas] = useState([]);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
 
   //Funcion para eliminar de forma masiva la informacion 
   const handleSelectVenta = (id) => {
@@ -65,12 +66,14 @@ const Fybeca = () => {
     }
   };
   // Función para cargar las ventas desde la API
-  const loadVentas = async () => {
+  const loadVentas = async (page = 1) => {
     setLoadingVentas(true);
     setErrorVentas("");
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/ventas"); // Ajusta la URL del API
-      if (!response.ok) throw new Error(`Error al cargar ventas: ${response.statusText}`);
+      const response = await fetch(
+        `http://localhost:8082/api/fybeca/ventas?page=${page}&size=${itemsPerPage}`
+      );
+      if (!response.ok) throw new Error("Error al cargar ventas");
       const data = await response.json();
       setVentas(data);
     } catch (error) {
@@ -79,7 +82,34 @@ const Fybeca = () => {
       setLoadingVentas(false);
     }
   };
+  
+  // Actualiza la página actual al cambiarla:
+  // Función para cambiar de página
+  const handlePageChange = (page) => {
+    if (page >= 1) {
+      setCurrentPage(page);
+    }
+  };
+    
+// Renderizado de los botones de paginación
+const renderPagination = () => {
+  const totalPages = Math.ceil(ventas.total / itemsPerPage); // Asegúrate de que `ventas.total` sea el total de las ventas
 
+  const pageNumbers = [];
+  for (let i = 1; i <= totalPages; i++) {
+    pageNumbers.push(
+      <button
+        key={i}
+        onClick={() => handlePageChange(i)}
+        className={i === currentPage ? 'active' : ''}
+      >
+        {i}
+      </button>
+    );
+  }
+
+  return <div className="pagination">{pageNumbers}</div>;
+};
   // Función para cargar las marcas disponibles desde la API
   const loadMarcas = async () => {
     try {
@@ -94,6 +124,7 @@ const Fybeca = () => {
 
   // Función para cargar el template de ventas
   const cargarTemplate = async (file) => {
+    setLoadingTemplate(true); // Activar la carga
     const formData = new FormData();
     formData.append("file", file);
 
@@ -109,8 +140,10 @@ const Fybeca = () => {
       setSuccessMessage(message);
       loadVentas(); // Recargar las ventas después de subir el archivo
     } catch (error) {
-      setErrorVentas(error.message);
-    }
+    setErrorVentas(error.message);
+  } finally {
+    setLoadingTemplate(false); // Desactivar la carga
+  }
   };
 
   // Función para eliminar una venta
@@ -150,6 +183,25 @@ const Fybeca = () => {
     }
   };
 
+  //Manekar el estado de paginacion
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 1000; // Número de elementos por página
+
+  const [filters, setFilters] = useState({
+    search: "",
+    year: "",
+    month: "",
+    brand: "",
+  });
+  
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prevFilters) => ({
+      ...prevFilters,
+      [name]: value,
+    }));
+  };
+  
   // Filtrar ventas por el filtro ingresado y por año, mes y marca
   const filteredVentas = ventas.filter((venta) => {
     const matchesFilter = Object.values(venta).some((value) =>
@@ -166,9 +218,9 @@ const Fybeca = () => {
   ];
   // Cargar las ventas y las marcas al montar el componente
   useEffect(() => {
-    loadVentas();
+    loadVentas(currentPage);
     loadMarcas();
-  }, []);
+  }, [currentPage]);
 
   return (
     <div className="container">
@@ -288,6 +340,7 @@ const Fybeca = () => {
                     type="checkbox"
                     checked={selectedVentas.includes(venta.id)}
                     onChange={() => handleSelectVenta(venta.id)}
+                    
                   />
                 </td>
                 <td>{venta.anio}</td>
@@ -316,11 +369,11 @@ const Fybeca = () => {
                     <i className="fas fa-trash-alt"></i>
                   </button>
                 </td>
-
               </tr>
             ))}
           </tbody>
         </table>
+        
       )}
 
       {editVenta && (

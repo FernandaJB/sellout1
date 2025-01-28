@@ -9,7 +9,6 @@ import com.manamer.backend.business.sellout.models.Venta;
 import com.manamer.backend.business.sellout.repositories.ClienteRepository;
 import com.manamer.backend.business.sellout.repositories.MantenimientoProductoRepository;
 import com.manamer.backend.business.sellout.repositories.ProductoRepository;
-import com.manamer.backend.business.sellout.repositories.VentaRepository;
 import com.manamer.backend.business.sellout.service.ClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoProductoService;
@@ -26,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.ArrayList;
 import org.springframework.http.HttpStatus;
@@ -34,7 +32,6 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.Iterator;
 
 @RestController
 @RequestMapping("/api/fybeca") // Cambié el prefijo para una mejor organización
@@ -202,8 +199,7 @@ public class FybecaController {
                             try {
                                 venta.setVenta_Dolares(Double.parseDouble(row.getCell(2).getStringCellValue()));
                             } catch (NumberFormatException e) {
-                                // Manejar el error si el valor no es un número válido
-                                e.printStackTrace();
+                                e.printStackTrace(); // Manejar el error si el valor no es un número válido
                             }
                         }
                     }
@@ -241,8 +237,7 @@ public class FybecaController {
                             try {
                                 venta.setStock_Dolares(Double.parseDouble(row.getCell(7).getStringCellValue()));
                             } catch (NumberFormatException e) {
-                                // Manejar el error si el valor no es un número válido
-                                e.printStackTrace();
+                                e.printStackTrace(); // Manejar el error si el valor no es un número válido
                             }
                         }
                     }
@@ -459,4 +454,15 @@ public class FybecaController {
         List<TipoMueble> tipoMuebles = tipoMuebleService.cargarTipoMueblesDesdeArchivo(file);
         return ResponseEntity.ok(tipoMuebles);
     }
+
+    @DeleteMapping("/eliminar-varios-tipo-mueble")
+    public ResponseEntity<String> eliminarTiposMueble(@RequestBody List<Long> ids) {
+        boolean todosEliminados = tipoMuebleService.eliminarTiposMueble(ids);
+        if (todosEliminados) {
+            return ResponseEntity.ok("Tipos de muebles eliminados correctamente.");
+        } else {
+            return ResponseEntity.status(404).body("Algunos tipos de muebles no se encontraron.");
+        }
+    } // Método para eliminar múltiples TipoMueble por ID
+        
 }

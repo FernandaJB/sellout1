@@ -34,7 +34,8 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
    default Producto obtenerProductoPorCodBarraLimpio(@Param("codBarra") String codBarra) {
        // Limpiar el código de barra antes de usarlo en la consulta
        if (codBarra != null) {
-           codBarra = codBarra.trim();  // Elimina espacios en blanco alrededor
+           codBarra = codBarra.trim();  
+           // Elimina espacios en blanco alrededor
        }
        
        // Verificar si el código de barra es nulo o vacío

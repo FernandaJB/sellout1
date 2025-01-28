@@ -555,7 +555,7 @@ select:focus {
   }
 
   .btn-clear-filters {
-    background-color: rgb(29, 90, 114);
+    background-color: skyblue;
     color: white;
     border: none;
     padding: 10px 20px;
@@ -568,4 +568,31 @@ select:focus {
   
   .btn-clear-filters i {
     margin-right: 5px;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+  }
+  
+  .pagination button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 16px;
+    margin: 0 5px;
+  }
+  
+  .pagination button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  
+  .pagination span {
+    font-size: 16px;
+    margin: 0 10px;
   }

@@ -5,6 +5,7 @@ import "@fortawesome/fontawesome-free/css/all.min.css"; // Importar Font Awesome
 const FybecaTipoMueble = () => {
   const [tipoMuebles, setTipoMuebles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]); 
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [editTipoMueble, setEditTipoMueble] = useState(null);
@@ -76,6 +77,61 @@ const FybecaTipoMueble = () => {
       setError(error.message);
     }
   };
+
+  // Función para manejar la selección de una fila
+  const handleSelect = (id) => {
+    setSelectedIds((prevSelectedIds) => {
+      if (prevSelectedIds.includes(id)) {
+        return prevSelectedIds.filter((selectedId) => selectedId !== id); // Desmarcar la casilla
+      } else {
+        return [...prevSelectedIds, id]; // Marcar la casilla
+      }
+    });
+  };
+
+  // Función para manejar la selección/deselección de todas las filas
+  const handleSelectAll = () => {
+    if (selectedIds.length === filteredTipoMuebles.length) {
+      setSelectedIds([]); // Si ya están todos seleccionados, desmarcar
+    } else {
+      setSelectedIds(filteredTipoMuebles.map((tm) => tm.id)); // Seleccionar todos
+    }
+  };
+
+  // Función para eliminar los tipos de muebles seleccionados
+    // Función para eliminar los tipos de muebles seleccionados
+  const eliminarTipoMueblesSeleccionados = async () => {
+    try {
+      const response = await fetch("http://localhost:8082/api/fybeca/eliminar-varios-tipo-mueble", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(selectedIds), // Enviar la lista de IDs seleccionados
+      });
+
+      if (response.ok) {
+        // Manejar la respuesta si la eliminación fue exitosa
+        alert("Tipos de muebles eliminados correctamente.");
+
+        // Filtrar los muebles eliminados de las listas locales
+        const updatedTipoMuebles = tipoMuebles.filter(
+          (tm) => !selectedIds.includes(tm.id)
+        );
+        setTipoMuebles(updatedTipoMuebles);
+        setFilteredTipoMuebles(updatedTipoMuebles);
+
+        // Limpiar la selección
+        setSelectedIds([]);
+      } else {
+        const errorMessage = await response.text();
+        alert(`Error al eliminar: ${errorMessage}`);
+      }
+    } catch (error) {
+      console.error("Error al hacer la solicitud:", error);
+    }
+  };
+
 
   // Función para eliminar un tipo de mueble
   const eliminarTipoMueble = async (id) => {
@@ -164,6 +220,12 @@ const FybecaTipoMueble = () => {
 
       <h2>Tipos de Mueble</h2>
 
+      <div className="action-buttons">
+        <button onClick={eliminarTipoMueblesSeleccionados} disabled={selectedIds.length === 0}>
+          Eliminar Seleccionados
+        </button>
+      </div>
+
       <div className="upload-section">
         <button onClick={() => setEditTipoMueble({ id: null, cod_Pdv: "", nombre_Pdv: "", tipo_Display_Essence: "", tipo_Mueble_Display_Catrice: "", cliente: { cod_Cliente: "", nombre_Cliente: "", ciudad: "" } })}>
           Crear Tipo de Mueble
@@ -227,6 +289,13 @@ const FybecaTipoMueble = () => {
         <table>
           <thead>
             <tr>
+            <th>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.length === filteredTipoMuebles.length}
+                  onChange={handleSelectAll}
+                />
+              </th>
               <th>Código Cliente</th>
               <th>Nombre Cliente</th>
               <th>Ciudad</th>
@@ -240,6 +309,13 @@ const FybecaTipoMueble = () => {
           <tbody>
             {filteredTipoMuebles.map((tipoMueble) => (
               <tr key={tipoMueble.id}>
+                 <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(tipoMueble.id)}
+                    onChange={() => handleSelect(tipoMueble.id)}
+                  />
+                </td>
                 <td>{tipoMueble.mantenimientoCliente ? tipoMueble.mantenimientoCliente.cod_Cliente : "N/A"}</td>
                 <td>{tipoMueble.mantenimientoCliente ? tipoMueble.mantenimientoCliente.nombre_Cliente : "N/A"}</td>
                 <td>{tipoMueble.mantenimientoCliente ? tipoMueble.mantenimientoCliente.ciudad : "N/A"}</td>
@@ -311,19 +387,27 @@ const FybecaTipoMueble = () => {
                 onChange={(e) => setEditTipoMueble({ ...editTipoMueble, nombre_Pdv: e.target.value })}
               />
               <label>Tipo Display Essence:</label>
-              <input
-                type="text"
+              <select
                 name="tipo_Display_Essence"
                 value={editTipoMueble.tipo_Display_Essence}
                 onChange={(e) => setEditTipoMueble({ ...editTipoMueble, tipo_Display_Essence: e.target.value })}
-              />
+              >
+                <option value="">Seleccione...</option>
+                {Array.from(new Set(tipoMuebles.map((tm) => tm.tipo_Display_Essence))).map((tipo) => (
+                  <option key={tipo} value={tipo}>{tipo}</option>
+                ))}
+              </select>
               <label>Tipo Mueble Display Catrice:</label>
-              <input
-                type="text"
-                name="tipo_Mueble_Display_Catrice"
-                value={editTipoMueble.tipo_Mueble_Display_Catrice}
-                onChange={(e) => setEditTipoMueble({ ...editTipoMueble, tipo_Mueble_Display_Catrice: e.target.value })}
-              />
+                <select
+                  name="tipo_Mueble_Display_Catrice"
+                  value={editTipoMueble.tipo_Mueble_Display_Catrice}
+                  onChange={(e) => setEditTipoMueble({ ...editTipoMueble, tipo_Mueble_Display_Catrice: e.target.value })}
+                >
+                  <option value="">Seleccione...</option>
+                  {Array.from(new Set(tipoMuebles.map((tm) => tm.tipo_Mueble_Display_Catrice))).map((tipo) => (
+                    <option key={tipo} value={tipo}>{tipo}</option>
+                  ))}
+                </select>
               <button type="submit" className="btn-crud">Guardar Cambios</button>
               <button type="button" className="btn-crud" onClick={() => setEditTipoMueble(null)}>Cancelar</button>
             </form>

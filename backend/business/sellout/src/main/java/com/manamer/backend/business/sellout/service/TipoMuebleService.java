@@ -109,4 +109,14 @@ public class TipoMuebleService {
                 return "";
         }
     }
+
+    public boolean eliminarTiposMueble(List<Long> ids) {
+        List<TipoMueble> tiposMuebles = tipoMuebleRepository.findAllById(ids);
+        if (tiposMuebles.isEmpty()) {
+            return false;
+        }
+        tipoMuebleRepository.deleteAll(tiposMuebles);
+        return true;
+    }
+    
 }
