@@ -58,6 +58,8 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.19",
+    "electron": "^34.0.2",
+    "electron-installer-windows": "^3.0.0",
     "postcss": "^8.4.40",
     "tailwindcss": "^3.4.7"
   }
