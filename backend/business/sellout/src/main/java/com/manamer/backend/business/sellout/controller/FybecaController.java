@@ -34,8 +34,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @RestController
-@RequestMapping("/api/fybeca") // Cambié el prefijo para una mejor organización
-@CrossOrigin(origins = "http://localhost:3000")
+@RequestMapping("/api/fybeca")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 public class FybecaController {
 
     @Autowired
@@ -132,12 +132,6 @@ public class FybecaController {
         List<Venta> ventas = ventaService.obtenerTodasLasVentas();
         return ResponseEntity.ok(ventas);
     }
-
-    /*@PostMapping("/venta")
-    public ResponseEntity<Venta> crearVenta(@RequestBody Venta venta) {
-        Venta nuevaVenta = ventaService.crearVenta(venta);
-        return new ResponseEntity<>(nuevaVenta, HttpStatus.CREATED);
-    }*/
 
     @GetMapping("/venta/{id}")
     public ResponseEntity<Venta> obtenerVentaPorId(@PathVariable Long id) {
