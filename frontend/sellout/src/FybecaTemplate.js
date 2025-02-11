@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import "./css/fybeca.css";
 import "@fortawesome/fontawesome-free/css/all.min.css"; // Importar Font Awesome
-
+import "@fortawesome/fontawesome-free/css/all.min.css"; // Importar Font Awesome
+import * as XLSX from 'xlsx'; // Importar la librería XLSX
 const Fybeca = () => {
   const [ventas, setVentas] = useState([]);
   const [loadingVentas, setLoadingVentas] = useState(false);
@@ -15,6 +16,39 @@ const Fybeca = () => {
   const [marcas, setMarcas] = useState([]); // Estado para almacenar las marcas disponibles
   const [selectedVentas, setSelectedVentas] = useState([]);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [year, setYear] = useState(new Date().getFullYear()); // Por defecto, el año actual
+  const [month, setMonth] = useState(new Date().getMonth() + 1); // Por defecto, el mes actual
+  const [data, setData] = useState(null); 
+  //Funcion para sacar reportes 
+  const downloadVentasReport = async () => {
+    setLoadingVentas(true); // Establece el estado de carga
+  
+    try {
+      const response = await fetch("http://localhost:8082/api/fybeca/reportes/ventas", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (!response.ok) {
+        throw new Error("Error al descargar el reporte de ventas");
+      }
+  
+      const reportData = await response.blob(); // Obtener el reporte en formato blob
+  
+      // Crea un enlace de descarga
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(reportData); // Crea una URL para el archivo
+      link.download = "reporte_ventas.xlsx"; // Nombre del archivo de descarga
+      link.click(); // Simula un clic para iniciar la descarga
+    } catch (error) {
+      setErrorVentas(error.message); // Maneja el error si ocurre
+    } finally {
+      setLoadingVentas(false); // Desactiva la carga
+    }
+  };
+  
 
   //Funcion para eliminar de forma masiva la informacion 
   const handleSelectVenta = (id) => {
@@ -66,13 +100,20 @@ const Fybeca = () => {
     }
   };
   // Función para cargar las ventas desde la API
-  const loadVentas = async (page = 1) => {
+  const loadVentas = async (page = 1, year = "", month = "") => {
     setLoadingVentas(true);
     setErrorVentas("");
     try {
-      const response = await fetch(
-        `http://localhost:8082/api/fybeca/ventas?page=${page}&size=${itemsPerPage}`
-      );
+      // Construye la URL incluyendo los filtros si están definidos
+      let url = `http://localhost:8082/api/fybeca/ventas?page=${page}&size=${itemsPerPage}`;
+      if (year) {
+        url += `&year=${year}`;
+      }
+      if (month) {
+        url += `&month=${month}`;
+      }
+      
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Error al cargar ventas");
       const data = await response.json();
       setVentas(data);
@@ -82,6 +123,7 @@ const Fybeca = () => {
       setLoadingVentas(false);
     }
   };
+  
   
   // Actualiza la página actual al cambiarla:
   // Función para cambiar de página
@@ -120,6 +162,11 @@ const renderPagination = () => {
     } catch (error) {
       setErrorVentas(error.message);
     }
+    // Llamada a la API con el año y mes como parámetros
+    fetch(`/api/tu-endpoint?year=${year}&month=${month}`)
+      .then((response) => response.json())
+      .then((data) => setData(data))
+      .catch((error) => console.error('Error al cargar los datos:', error));
   };
 
   // Función para cargar el template de ventas
@@ -217,10 +264,53 @@ const renderPagination = () => {
     "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
   ];
   // Cargar las ventas y las marcas al montar el componente
+  // Solo cargar marcas al montar el componente
   useEffect(() => {
-    loadVentas(currentPage);
     loadMarcas();
-  }, [currentPage]);
+  }, [year, month]); 
+  
+  
+  
+
+  // Función para exportar los datos a XLSX
+  const exportToXLSX = () => {
+    const filteredVentas = ventas.filter((venta) => {
+      const matchesFilter = Object.values(venta).some((value) =>
+        value.toString().toLowerCase().includes(filter.toLowerCase())
+      );
+      const matchesYear = filterYear ? venta.anio.toString() === filterYear : true;
+      const matchesMonth = filterMonth ? venta.mes.toString() === filterMonth : true;
+      const matchesMarca = filterMarca ? venta.marca === filterMarca : true;
+      return matchesFilter && matchesYear && matchesMonth && matchesMarca;
+    });
+
+    const exportData = filteredVentas.map((venta) => ({
+      Año: venta.anio,
+      Mes: venta.mes,
+      Marca: venta.marca,
+      "Cliente ID": venta.mantenimientoCliente ? venta.mantenimientoCliente.cod_Cliente : "N/A",
+      "Nombre Cliente": venta.mantenimientoCliente ? venta.mantenimientoCliente.nombre_Cliente : "N/A",
+      "Código Barra SAP": venta.codBarra,
+      "Código Producto SAP": venta.codigo_Sap,
+      "Código Item": venta.mantenimientoProducto ? venta.mantenimientoProducto.cod_Item : "N/A",
+      "Nombre Producto": venta.nombre_Producto,
+      "Código PDV": venta.cod_Pdv,
+      Ciudad: venta.mantenimientoCliente ? venta.mantenimientoCliente.ciudad : "N/A",
+      PDV: venta.pdv,
+      "Stock en Dólares": venta.stock_Dolares.toFixed(2),
+      "Stock en Unidades": venta.stock_Unidades,
+      "Venta en Dólares": venta.venta_Dolares.toFixed(2),
+      "Venta en Unidades": venta.venta_Unidad,
+    }));
+    
+    // Crea el archivo XLSX
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ventas");
+
+    // Exporta el archivo
+    XLSX.writeFile(wb, "Ventas_Fybeca.xlsx");
+  };
 
   return (
     <div className="container">
@@ -246,42 +336,65 @@ const renderPagination = () => {
           }}
           style={{ display: "none" }}
         />
-        {/* Input para filtrar las ventas */}
-        <input
-          type="text"
-          placeholder="Filtrar ventas"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)} // Actualizar el estado del filtro
-        />
-        {/* Selectores para filtrar por año, mes y marca */}
-        <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
-          <option value="">Todos los años</option>
-          {[...new Set(ventas.map((venta) => venta.anio))].map((year) => (
-            <option key={year} value={year}>
-              {year}
-            </option>
-          ))}
-        </select>
-        <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
-          <option value="">Todos los meses</option>
-          {[...new Set(ventas.map((venta) => venta.mes))].map((month) => (
-            <option key={month} value={month}>
-            {monthNames[month - 1]} {/* Restamos 1 porque los índices del arreglo empiezan en 0 */}
-          </option>
-          ))}
-        </select>
-        <select value={filterMarca} onChange={(e) => setFilterMarca(e.target.value)}>
-          <option value="">Todas las marcas</option>
-          {marcas.map((marca) => (
-            <option key={marca} value={marca}>
-              {marca}
-            </option>
-          ))}
-        </select>
+        {/* Select para filtrar por año */}
+          <select
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+          >
+            <option value="">Selecciona un año</option>
+            {[...new Set(ventas.map((venta) => venta.anio))].map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+
+          {/* Select para filtrar por mes */}
+          <select
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+          >
+            <option value="">Selecciona un mes</option>
+            {[...new Set(ventas.map((venta) => venta.mes))].map((month) => (
+              <option key={month} value={month}>
+                {monthNames[month - 1]}
+              </option>
+            ))}
+          </select>
+
+          {/* Luego el selector de marca */}
+          <select
+            value={filterMarca}
+            onChange={(e) => setFilterMarca(e.target.value)}
+          >
+            <option value="">Todas las marcas</option>
+            {marcas.map((marca) => (
+              <option key={marca} value={marca}>
+                {marca}
+              </option>
+            ))}
+          </select>
+
+          {/* Input para búsqueda adicional (si se requiere) */}
+          <input
+            type="text"
+            placeholder="Filtrar ventas"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+
+          <button onClick={() => loadVentas(currentPage, filterYear, filterMonth)}>
+            Filtrar Ventas
+          </button>
         <a href="/TEMPLATE VENTAS FYBECA.xlsx" download="TEMPLATE VENTAS FYBECA.xlsx">
           <button className="btn-template">Descargar Template</button>
         </a>
+        <button onClick={downloadVentasReport} disabled={loadingVentas}>
+          {loadingVentas ? "Cargando..." : "Descargar Reporte de Ventas"}
+        </button>
+
       </div>
+
       <div className="actions-section">
         <span
           className={`delete-icon ${selectedVentas.length === 0 ? 'icon-disabled' : 'icon-enabled'}`}

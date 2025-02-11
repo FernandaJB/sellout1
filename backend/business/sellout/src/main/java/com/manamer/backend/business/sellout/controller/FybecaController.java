@@ -1,6 +1,7 @@
 package com.manamer.backend.business.sellout.controller;
 
 import com.manamer.backend.business.sellout.models.Cliente;
+import com.manamer.backend.business.sellout.models.ExcelUtils;
 import com.manamer.backend.business.sellout.models.MantenimientoCliente;
 import com.manamer.backend.business.sellout.models.MantenimientoProducto;
 import com.manamer.backend.business.sellout.models.Producto;
@@ -9,6 +10,7 @@ import com.manamer.backend.business.sellout.models.Venta;
 import com.manamer.backend.business.sellout.repositories.ClienteRepository;
 import com.manamer.backend.business.sellout.repositories.MantenimientoProductoRepository;
 import com.manamer.backend.business.sellout.repositories.ProductoRepository;
+import com.manamer.backend.business.sellout.repositories.VentaRepository;
 import com.manamer.backend.business.sellout.service.ClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoProductoService;
@@ -20,6 +22,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.poi.ss.usermodel.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,12 +132,9 @@ public class FybecaController {
     // Métodos para ventas
     @GetMapping("/ventas") // Obtener todas las ventas
     public ResponseEntity<List<Venta>> obtenerTodasLasVentas() {
-        // Obtener todas las ventas sin paginación
         List<Venta> ventas = ventaService.obtenerTodasLasVentas();
         return ResponseEntity.ok(ventas);
     }
-
-
 
     @GetMapping("/venta/{id}")
     public ResponseEntity<Venta> obtenerVentaPorId(@PathVariable Long id) {
@@ -452,6 +452,7 @@ public class FybecaController {
         return ResponseEntity.ok(tipoMuebles);
     }
 
+     // Método para eliminar múltiples TipoMueble por ID
     @DeleteMapping("/eliminar-varios-tipo-mueble")
     public ResponseEntity<String> eliminarTiposMueble(@RequestBody List<Long> ids) {
         boolean todosEliminados = tipoMuebleService.eliminarTiposMueble(ids);
@@ -460,6 +461,12 @@ public class FybecaController {
         } else {
             return ResponseEntity.status(404).body("Algunos tipos de muebles no se encontraron.");
         }
-    } // Método para eliminar múltiples TipoMueble por ID
-        
+    }
+
+    public static byte[] convertWorkbookToByteArray(XSSFWorkbook workbook) throws IOException {
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }       
 }

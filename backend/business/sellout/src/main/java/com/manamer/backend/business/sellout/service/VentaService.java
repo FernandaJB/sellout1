@@ -10,14 +10,14 @@ import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class VentaService {
@@ -39,12 +39,18 @@ public class VentaService {
      * @return boolean indicando si los datos se cargaron correctamente.
      */
     public boolean cargarDatosDeProducto(Venta venta) {
+        // Limpia el código de item (eliminar espacios en blanco) antes de la comparación
         String codItem = venta.getCodBarra();
         
+        // Mostrar el valor que llega para verificar si está correcto
+        System.out.println("Código de item recibido: '" + codItem + "'");
+        
         if (codItem == null || codItem.trim().isEmpty()) {
-            return false;
+            System.out.println("El código de item no puede ser nulo o vacío");
+            return false;  // No realizamos la consulta si el código de item es inválido
         }
         
+        // Eliminar espacios en blanco al principio y al final
         codItem = codItem.trim();
         
         // Consulta SQL nativa para verificar si el codItem existe y obtener el cod_Barra_Sap
@@ -52,22 +58,27 @@ public class VentaService {
                          + "FROM SELLOUT.dbo.mantenimiento_producto p "
                          + "WHERE p.cod_Item = :codItem";
         
+        // Ejecutar la consulta para obtener el cod_Barra_Sap
         Query query = entityManager.createNativeQuery(queryStr);
         query.setParameter("codItem", codItem);
         
         try {
+            // Obtener los resultados
             List<String> codBarraSapList = query.getResultList();
             
             if (codBarraSapList.isEmpty()) {
+                System.out.println("No se encontró ningún código de barra SAP para el código de item: " + codItem);
                 return false;
             }
             
+            // Tomar el primer resultado (o manejar múltiples resultados según tu lógica de negocio)
             String codBarraSap = codBarraSapList.get(0);
             
             if (codBarraSap != null && !codBarraSap.trim().isEmpty()) {
+                // Asignar el cod_Barra_Sap a la entidad Venta
                 venta.setCodBarra(codBarraSap.trim());
                 
-                // Consulta para obtener los datos del producto según el cod_Barra_Sap
+                // Consulta SQL nativa para obtener los datos del producto según el cod_Barra_Sap
                 queryStr = "SELECT c.id AS ClienteID, c.cod_Cliente, c.nombre_Cliente, c.ciudad, c.codigo_Proveedor, "
                          + "p.id AS IdProducto, p.cod_Item, p.cod_Barra_Sap, sapProd.CodProd, sapProd.CodBarra, "
                          + "sapProd.Descripcion AS DescripcionProducto, sapProd.Marca "
@@ -76,12 +87,15 @@ public class VentaService {
                          + "CROSS JOIN (SELECT TOP 1 * FROM SELLOUT.dbo.mantenimiento_cliente) c "
                          + "WHERE sapProd.CodBarra = :codBarraSap";
                 
+                // Ejecutar la consulta
                 query = entityManager.createNativeQuery(queryStr);
                 query.setParameter("codBarraSap", codBarraSap);
                 
+                // Obtener los resultados
                 Object[] result = (Object[]) query.getSingleResult();
             
                 if (result != null && result.length == 12) {
+                    // Asignamos los valores a la entidad Venta
                     venta.setMantenimientoCliente(new MantenimientoCliente());
                     venta.getMantenimientoCliente().setId(((Number) result[0]).longValue());  // ClienteID
                     venta.getMantenimientoCliente().setCod_Cliente((String) result[1]);  // cod_Cliente
@@ -101,17 +115,16 @@ public class VentaService {
                     venta.setMarca((String) result[11]);  // Marca
                     return true;
                 }
+            } else {
+                System.out.println("No se encontró ningún código de barra SAP para el código de item: " + codItem);
+                return false;
             }
         } catch (NoResultException e) {
+            // Manejar el caso donde no se encuentra ningún resultado
+            System.out.println("No se encontró ningún producto con el código de item: " + codItem);
             return false;
         }
         return false;
-    }
-
-    public List<Venta> obtenerTodasLasVentas(int pagina, int tamano) {
-        Pageable pageable = PageRequest.of(pagina - 1, tamano);
-        Page<Venta> ventas = ventaRepository.findAll(pageable);
-        return ventas.getContent();
     }
 
     @Transactional
