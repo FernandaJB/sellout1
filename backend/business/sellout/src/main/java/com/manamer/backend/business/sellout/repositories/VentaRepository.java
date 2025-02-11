@@ -17,21 +17,21 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
 
    // Consulta para obtener el Producto por el cod_Barra desde la tabla SAP_Prod (SAPHANA..CG3_360CORP.SAP_Prod)
    @Query(value = "SELECT * FROM SAPHANA..CG3_360CORP.SAP_Prod sapProd WHERE sapProd.CodBarra = :codBarra", nativeQuery = true)
-   Producto obtenerProductoPorCodBarra(@Param("codBarra") String codBarra);
+   List<Producto> obtenerProductoPorCodBarra(@Param("codBarra") String codBarra);  // Cambiado a List<Producto>
 
    // Consulta para obtener el MantenimientoProducto por el cod_Barra desde la tabla SELLOUT.dbo.mantenimiento_producto
    @Query(value = "SELECT * FROM SELLOUT.dbo.mantenimiento_producto mp WHERE mp.cod_Barra_Sap = :codBarra", nativeQuery = true)
-   MantenimientoProducto obtenerMantenimientoProducto(@Param("codBarra") String codBarra);
+   List<MantenimientoProducto> obtenerMantenimientoProducto(@Param("codBarra") String codBarra);  // Cambiado a List<MantenimientoProducto>
 
    // Consulta para obtener el MantenimientoCliente (suponiendo que está en SELLOUT.dbo.mantenimiento_cliente)
    @Query(value = "SELECT * FROM SELLOUT.dbo.mantenimiento_cliente c WHERE c.id = :clienteId", nativeQuery = true)
    MantenimientoCliente obtenerMantenimientoCliente(@Param("clienteId") Long clienteId);
 
    @Query("SELECT mp FROM MantenimientoProducto mp WHERE mp.cod_Barra_Sap = :codBarra")
-    MantenimientoProducto findMantenimientoProductoByCodBarra(@Param("codBarra") String codBarra);
+   List<MantenimientoProducto> findMantenimientoProductoByCodBarra(@Param("codBarra") String codBarra);  // Cambiado a List<MantenimientoProducto>
 
    // Nueva consulta que valida y limpia el codBarra antes de la consulta
-   default Producto obtenerProductoPorCodBarraLimpio(@Param("codBarra") String codBarra) {
+   default List<Producto> obtenerProductoPorCodBarraLimpio(@Param("codBarra") String codBarra) {
        // Limpiar el código de barra antes de usarlo en la consulta
        if (codBarra != null) {
            codBarra = codBarra.trim();  
@@ -43,7 +43,7 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
            return null;  // Retorna null si el código de barra no es válido
        }
        
-       // Llamar al método existente para obtener el producto usando el código limpio
-       return obtenerProductoPorCodBarra(codBarra);
+       // Llamar al método existente para obtener los productos usando el código limpio
+       return obtenerProductoPorCodBarra(codBarra);  // Ahora devuelve una lista de productos
    }
 }

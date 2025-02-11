@@ -129,9 +129,12 @@ public class FybecaController {
     // Métodos para ventas
     @GetMapping("/ventas") // Obtener todas las ventas
     public ResponseEntity<List<Venta>> obtenerTodasLasVentas() {
+        // Obtener todas las ventas sin paginación
         List<Venta> ventas = ventaService.obtenerTodasLasVentas();
         return ResponseEntity.ok(ventas);
     }
+
+
 
     @GetMapping("/venta/{id}")
     public ResponseEntity<Venta> obtenerVentaPorId(@PathVariable Long id) {
