@@ -12,7 +12,6 @@ import com.manamer.backend.business.sellout.service.MantenimientoClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoProductoService;
 import com.manamer.backend.business.sellout.service.TipoMuebleService;
 import com.manamer.backend.business.sellout.service.VentaService;
-
 import org.springframework.http.ResponseEntity;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +21,6 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.poi.ss.usermodel.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
