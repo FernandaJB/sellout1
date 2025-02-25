@@ -20,7 +20,7 @@ const FybecaTipoMueble = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/find-all-tipo-mueble");
+      const response = await fetch("http://localhost:8082/api/fybeca/tipo-mueble");
       if (!response.ok) throw new Error(`Error al cargar tipos de mueble: ${response.statusText}`);
       const data = await response.json();
       setTipoMuebles(data);
@@ -35,7 +35,7 @@ const FybecaTipoMueble = () => {
   // Función para crear un nuevo tipo de mueble
   const crearTipoMueble = async (tipoMueble) => {
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/crear-nuevo-tipo-mueble", {
+      const response = await fetch("http://localhost:8082/api/fybeca/tipo-mueble", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -57,7 +57,7 @@ const FybecaTipoMueble = () => {
   // Función para actualizar un tipo de mueble
   const actualizarTipoMueble = async (tipoMueble) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/fybeca/actualizar-tipo-mueble/${tipoMueble.id}`, {
+      const response = await fetch(`http://localhost:8082/api/fybeca/tipo-mueble/${tipoMueble.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +136,7 @@ const FybecaTipoMueble = () => {
   // Función para eliminar un tipo de mueble
   const eliminarTipoMueble = async (id) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/fybeca/eliminar-id-tipo-mueble/${id}`, {
+      const response = await fetch(`http://localhost:8082/api/fybeca/tipo-mueble/${id}`, {
         method: "DELETE",
       });
 
@@ -158,7 +158,7 @@ const FybecaTipoMueble = () => {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/subir-template-tipo-muebles", {
+      const response = await fetch("http://localhost:8082/api/fybeca/template-tipo-muebles", {
         method: "POST",
         body: formData,
       });
@@ -211,6 +211,49 @@ const FybecaTipoMueble = () => {
     loadTipoMuebles();
   }, []);
 
+  // Función para descargar el reporte
+  const descargarReporte = async () => {
+    try {
+      // Hacer la solicitud GET a la API
+      const response = await fetch("http://localhost:8082/api/fybeca/reporte-tipo-mueble", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json", // Si la API devuelve un archivo, este puede no ser necesario
+        },
+      });
+  
+      // Verificar si la respuesta es exitosa
+      if (!response.ok) {
+        throw new Error(`Error al descargar reporte: ${response.statusText}`);
+      }
+  
+      // Obtener el nombre del archivo desde la cabecera o respuesta
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const fileName = contentDisposition
+        ? contentDisposition.split("filename=")[1].replace(/"/g, "")
+        : "reporte_mantenimiento_productos.xlsx"; // Nombre por defecto si no se encuentra en las cabeceras
+  
+      // Crear un Blob a partir de la respuesta (que se espera sea un archivo binario)
+      const blob = await response.blob();
+  
+      // Crear un enlace temporal para realizar la descarga
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;  // Establecer el nombre del archivo a descargar
+      document.body.appendChild(a);
+      a.click();  // Simular el clic para iniciar la descarga
+      a.remove();  // Limpiar el enlace temporal
+  
+      // Liberar el URL creado
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      // Manejar errores
+      console.error(`Error al descargar el reporte: ${error.message}`);
+      alert(`Error al descargar el reporte: ${error.message}`);
+    }
+  };
+
   return (
     <div className="container">
       <h1>Tipos de Mueble Fybeca</h1>
@@ -223,6 +266,11 @@ const FybecaTipoMueble = () => {
       <div className="action-buttons">
         <button onClick={eliminarTipoMueblesSeleccionados} disabled={selectedIds.length === 0}>
           Eliminar Seleccionados
+        </button>
+
+         {/* Botón para descargar el reporte */}
+        <button onClick={descargarReporte} className="btn-download-reporte">
+          Descargar Reporte
         </button>
       </div>
 

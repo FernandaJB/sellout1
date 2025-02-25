@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit, faFileUpload } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faFileUpload, faFileDownload } from "@fortawesome/free-solid-svg-icons";
 import "./css/fybeca.css"; // Asegúrate de tener tu archivo CSS
 
 const FybecaMantenimientoProducto = () => {
@@ -18,7 +18,7 @@ const FybecaMantenimientoProducto = () => {
   useEffect(() => {
     const fetchProductos = async () => {
       try {
-        const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento/productos");
+        const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento-productos");
         if (!response.ok) {
           throw new Error("Error al obtener los productos");
         }
@@ -28,7 +28,7 @@ const FybecaMantenimientoProducto = () => {
         console.error(error);
       }
     };
-  
+
     fetchProductos();
   }, []);
 
@@ -37,7 +37,7 @@ const FybecaMantenimientoProducto = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:8082/api/fybeca/mantenimiento/productos?page=${page}&size=${itemsPerPage}`);
+      const response = await fetch(`http://localhost:8082/api/fybeca/mantenimiento-productos?page=${page}&size=${itemsPerPage}`);
       if (!response.ok) {
         throw new Error(`Error al cargar productos: ${response.statusText}`);
       }
@@ -55,7 +55,7 @@ const FybecaMantenimientoProducto = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento/clientes");
+      const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento-cliente");
       if (!response.ok) {
         throw new Error(`Error al cargar clientes: ${response.statusText}`);
       }
@@ -72,7 +72,7 @@ const FybecaMantenimientoProducto = () => {
   const handleSaveProducto = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento/producto", {
+      const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento-producto", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -129,7 +129,7 @@ const FybecaMantenimientoProducto = () => {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento/productos/cargar", {
+      const response = await fetch("http://localhost:8082/api/fybeca/template-mantenimiento-productos", {
         method: "POST",
         body: formData,
       });
@@ -169,7 +169,7 @@ const FybecaMantenimientoProducto = () => {
 
     try {
       for (const batch of batches) {
-        const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento/productos/eliminar", {
+        const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento-productos", {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
@@ -203,6 +203,32 @@ const FybecaMantenimientoProducto = () => {
     loadClientes();
   }, [page]); // Cambia la página cada vez que se actualice el número de página
 
+  // Función para generar el reporte con los filtros aplicados
+  const generateReport = async () => {
+    try {
+      const response = await fetch("http://localhost:8082/api/fybeca/reporte-mantenimiento-productos", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al generar el reporte");
+      }
+
+      const reportBlob = await response.blob();
+      const url = URL.createObjectURL(reportBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "reporte_productos.xlsx"; // Nombre del archivo a descargar
+      link.click();
+      URL.revokeObjectURL(url); // Limpiar el objeto URL después de la descarga
+    } catch (error) {
+      console.error("Error al generar el reporte:", error);
+    }
+  };
+
   return (
     <div className="container">
       <h1>Mantenimiento Producto</h1>
@@ -218,7 +244,7 @@ const FybecaMantenimientoProducto = () => {
           {/* Botones arriba de la tabla */}
           <div className="buttons-top">
             <div className="upload-section">
-              <h3>Cargar Archivo XLSX</h3>
+              <h3 class="text-black">Cargar Archivo XLSX</h3>
               <div className="file-upload" onClick={() => document.getElementById('fileInput').click()}>
                 <FontAwesomeIcon icon={faFileUpload} /> Elegir Archivo
               </div>
@@ -243,6 +269,11 @@ const FybecaMantenimientoProducto = () => {
             >
               Eliminar Seleccionados
             </button>
+            
+            {/* Botón para generar reporte */}
+            <button onClick={generateReport} className="btn-download">
+              <FontAwesomeIcon icon={faFileDownload} /> Generar Reporte
+            </button>
           </div>
 
           {/* Filtro de productos */}
@@ -256,76 +287,46 @@ const FybecaMantenimientoProducto = () => {
             />
           </div>
 
-          <h2>Lista de Productos</h2>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>
+          {/* Lista de productos */}
+          <table className="producto-table">
+            <thead>
+              <tr>
+                <th>Selección</th>
+                <th>Código Item</th>
+                <th>Código Barra SAP</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProductos.map((producto) => (
+                <tr key={producto.id}>
+                  <td>
                     <input
                       type="checkbox"
-                      onChange={(e) => {
-                        const isChecked = e.target.checked;
-                        setProductos((prevProductos) =>
-                          prevProductos.map((producto) => ({
-                            ...producto,
-                            selected: isChecked,
-                          }))
-                        );
+                      checked={producto.selected || false}
+                      onChange={() => {
+                        producto.selected = !producto.selected;
+                        setProductos([...productos]);
                       }}
                     />
-                  </th>
-                  <th>Código Item</th>
-                  <th>Código Barra SAP</th>
-                  <th>Acciones</th>
+                  </td>
+                  <td>{producto.cod_Item}</td>
+                  <td>{producto.cod_Barra_Sap}</td>
+                  <td>
+                    <button onClick={() => handleEdit(producto.id)} className="btn-edit">
+                      <FontAwesomeIcon icon={faEdit} /> Editar
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredProductos.map((producto) => (
-                  <tr key={producto.id}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={producto.selected || false}
-                        onChange={(e) => {
-                          const isChecked = e.target.checked;
-                          setProductos((prevProductos) =>
-                            prevProductos.map((p) =>
-                              p.id === producto.id ? { ...p, selected: isChecked } : p
-                            )
-                          );
-                        }}
-                      />
-                    </td>
-                    <td>{producto.cod_Item}</td>
-                    <td>{producto.cod_Barra_Sap}</td>
-                    <td>
-                      <FontAwesomeIcon
-                        icon={faEdit}
-                        onClick={() => handleEdit(producto.id)}
-                        className="icon-edit"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
 
-          {/* Paginación */}
-          <div className="pagination">
-            <button onClick={() => setPage(page - 1)} disabled={page === 1}>
-              Anterior
-            </button>
-            <button onClick={() => setPage(page + 1)}>
-              Siguiente
-            </button>
-          </div>
-
-          {showModal && productoEditar && (
+          {/* Modal para editar producto */}
+          {showModal && (
             <div className="modal">
               <div className="modal-content">
-                <h2>{productoEditar.id ? "Editar Producto" : "Nuevo Producto"}</h2>
+                <h3>Editar Producto</h3>
                 <form onSubmit={handleSaveProducto}>
                   <label>Código Item</label>
                   <input
@@ -333,6 +334,7 @@ const FybecaMantenimientoProducto = () => {
                     name="cod_Item"
                     value={productoEditar.cod_Item}
                     onChange={handleInputChange}
+                    required
                   />
                   <label>Código Barra SAP</label>
                   <input
@@ -340,20 +342,11 @@ const FybecaMantenimientoProducto = () => {
                     name="cod_Barra_Sap"
                     value={productoEditar.cod_Barra_Sap}
                     onChange={handleInputChange}
+                    required
                   />
-                  <div className="modal-actions">
-                    <button type="submit" className="btn-save">
-                      Guardar
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-cancel"
-                      onClick={handleCloseModal}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
+                  <button type="submit">Guardar</button>
                 </form>
+                <button onClick={handleCloseModal}>Cerrar</button>
               </div>
             </div>
           )}
@@ -363,4 +356,4 @@ const FybecaMantenimientoProducto = () => {
   );
 };
 
-export default FybecaMantenimientoProducto; 
+export default FybecaMantenimientoProducto;

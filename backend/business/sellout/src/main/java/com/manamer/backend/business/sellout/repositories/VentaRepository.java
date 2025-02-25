@@ -15,35 +15,48 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface VentaRepository extends JpaRepository<Venta, Long> {
 
-   // Consulta para obtener el Producto por el cod_Barra desde la tabla SAP_Prod (SAPHANA..CG3_360CORP.SAP_Prod)
+   // Consulta para obtener el Producto por cod_Barra (pueden existir varios productos con el mismo código de barras)
    @Query(value = "SELECT * FROM SAPHANA..CG3_360CORP.SAP_Prod sapProd WHERE sapProd.CodBarra = :codBarra", nativeQuery = true)
-   Producto obtenerProductoPorCodBarra(@Param("codBarra") String codBarra);
+   List<Producto> obtenerProductoPorCodBarra(@Param("codBarra") String codBarra);
 
-   // Consulta para obtener el MantenimientoProducto por el cod_Barra desde la tabla SELLOUT.dbo.mantenimiento_producto
+   // Si solo se necesita un resultado, se toma el primero de la lista
+   default Optional<Producto> obtenerPrimerProductoPorCodBarra(@Param("codBarra") String codBarra) {
+       List<Producto> productos = obtenerProductoPorCodBarra(codBarra);
+       return productos.isEmpty() ? Optional.empty() : Optional.of(productos.get(0));
+   }
+
+   // Consulta para obtener el MantenimientoProducto (pueden existir varios con el mismo cod_Barra_Sap)
    @Query(value = "SELECT * FROM SELLOUT.dbo.mantenimiento_producto mp WHERE mp.cod_Barra_Sap = :codBarra", nativeQuery = true)
-   MantenimientoProducto obtenerMantenimientoProducto(@Param("codBarra") String codBarra);
+   List<MantenimientoProducto> obtenerMantenimientoProducto(@Param("codBarra") String codBarra);
 
-   // Consulta para obtener el MantenimientoCliente (suponiendo que está en SELLOUT.dbo.mantenimiento_cliente)
+   default Optional<MantenimientoProducto> obtenerPrimerMantenimientoProducto(@Param("codBarra") String codBarra) {
+       List<MantenimientoProducto> productos = obtenerMantenimientoProducto(codBarra);
+       return productos.isEmpty() ? Optional.empty() : Optional.of(productos.get(0));
+   }
+
+   // Consulta para obtener el MantenimientoCliente (en este caso, se espera un solo resultado)
    @Query(value = "SELECT * FROM SELLOUT.dbo.mantenimiento_cliente c WHERE c.id = :clienteId", nativeQuery = true)
-   MantenimientoCliente obtenerMantenimientoCliente(@Param("clienteId") Long clienteId);
+   Optional<MantenimientoCliente> obtenerMantenimientoCliente(@Param("clienteId") Long clienteId);
 
+   // Método alternativo para obtener solo un resultado en MantenimientoProducto con cod_Barra_Sap
    @Query("SELECT mp FROM MantenimientoProducto mp WHERE mp.cod_Barra_Sap = :codBarra")
-    MantenimientoProducto findMantenimientoProductoByCodBarra(@Param("codBarra") String codBarra);
+   List<MantenimientoProducto> findMantenimientoProductoByCodBarra(@Param("codBarra") String codBarra);
+
+   default Optional<MantenimientoProducto> findPrimerMantenimientoProductoByCodBarra(@Param("codBarra") String codBarra) {
+       List<MantenimientoProducto> productos = findMantenimientoProductoByCodBarra(codBarra);
+       return productos.isEmpty() ? Optional.empty() : Optional.of(productos.get(0));
+   }
 
    // Nueva consulta que valida y limpia el codBarra antes de la consulta
-   default Producto obtenerProductoPorCodBarraLimpio(@Param("codBarra") String codBarra) {
-       // Limpiar el código de barra antes de usarlo en la consulta
+   default Optional<Producto> obtenerProductoPorCodBarraLimpio(@Param("codBarra") String codBarra) {
        if (codBarra != null) {
-           codBarra = codBarra.trim();  
-           // Elimina espacios en blanco alrededor
+           codBarra = codBarra.trim();
        }
-       
-       // Verificar si el código de barra es nulo o vacío
+
        if (codBarra == null || codBarra.isEmpty()) {
-           return null;  // Retorna null si el código de barra no es válido
+           return Optional.empty();
        }
-       
-       // Llamar al método existente para obtener el producto usando el código limpio
-       return obtenerProductoPorCodBarra(codBarra);
+
+       return obtenerPrimerProductoPorCodBarra(codBarra);
    }
 }

@@ -10,6 +10,9 @@ import FybecaMantenimientoProducto from './FybecaMantenimientoProducto';
 import FybecaTemplate from './FybecaTemplate';
 import FybecaTipoMueble from './FybecaTipoMueble';
 import './App.css';
+import "primereact/resources/themes/lara-light-indigo/theme.css";  // Tema de PrimeReact
+import "primereact/resources/primereact.min.css";  // Estilos base
+import "primeicons/primeicons.css"; // Iconos
 
 const App = () => {
   const [user, setUser] = useState(null);

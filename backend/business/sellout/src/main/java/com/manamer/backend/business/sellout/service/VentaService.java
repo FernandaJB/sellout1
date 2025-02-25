@@ -138,6 +138,36 @@ public class VentaService {
         }
     }
 
+    @Transactional
+    public void guardarVentasConExecutorService(List<Venta> ventas) {
+        int batchSize = 50;
+        ExecutorService executorService = Executors.newFixedThreadPool(10); // Usamos un pool de hilos para la ejecución paralela
+        try {
+            for (int i = 0; i < ventas.size(); i += batchSize) {
+                int end = Math.min(i + batchSize, ventas.size());
+                List<Venta> batchList = ventas.subList(i, end);
+                executorService.submit(() -> {
+                    try {
+                        ventaRepository.saveAll(batchList);
+                        ventaRepository.flush();
+                    } catch (Exception e) {
+                        e.printStackTrace(); // Log del error
+                    }
+                });
+            }
+        } finally {
+            executorService.shutdown();
+            try {
+                // Esperamos a que se terminen todas las tareas
+                if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+            }
+        }
+    }
+
     // Obtener todas las ventas
     public List<Venta> obtenerTodasLasVentas() {
         return ventaRepository.findAll();

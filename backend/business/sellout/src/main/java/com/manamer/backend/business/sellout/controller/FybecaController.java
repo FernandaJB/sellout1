@@ -4,13 +4,9 @@ import com.manamer.backend.business.sellout.models.Cliente;
 import com.manamer.backend.business.sellout.models.ExcelUtils;
 import com.manamer.backend.business.sellout.models.MantenimientoCliente;
 import com.manamer.backend.business.sellout.models.MantenimientoProducto;
-import com.manamer.backend.business.sellout.models.Producto;
 import com.manamer.backend.business.sellout.models.TipoMueble;
 import com.manamer.backend.business.sellout.models.Venta;
-import com.manamer.backend.business.sellout.repositories.ClienteRepository;
 import com.manamer.backend.business.sellout.repositories.MantenimientoProductoRepository;
-import com.manamer.backend.business.sellout.repositories.ProductoRepository;
-import com.manamer.backend.business.sellout.repositories.VentaRepository;
 import com.manamer.backend.business.sellout.service.ClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoClienteService;
 import com.manamer.backend.business.sellout.service.MantenimientoProductoService;
@@ -40,12 +36,6 @@ import java.util.concurrent.TimeUnit;
 @RequestMapping("/api/fybeca")
 @CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
 public class FybecaController {
-
-    @Autowired
-    private ClienteRepository clienteRepository;
-
-    @Autowired
-    private ProductoRepository productoRepository;
 
     private final VentaService ventaService;
 
@@ -85,52 +75,15 @@ public class FybecaController {
         this.tipoMuebleService = tipoMuebleService;
     }
 
-    // Métodos para productos
-    @GetMapping("/productos") // Endpoints relacionados con productos
-    public List<Producto> obtenerProductos() {
-        return productoRepository.findAll();
-    }
-
-    @GetMapping("/producto/{id}")
-    public ResponseEntity<Producto> obtenerProducto(@PathVariable Long id) {
-        Optional<Producto> producto = productoRepository.findById(id);
-        return producto.map(ResponseEntity::ok)
-                       .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-    }
-
-    @PostMapping("/producto")
-    public ResponseEntity<Producto> crearProducto(@RequestBody Producto producto) {
-        Producto nuevoProducto = productoRepository.save(producto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(nuevoProducto);
-    }
-
-    @PutMapping("/producto/{id}")
-    public ResponseEntity<Producto> actualizarProducto(@PathVariable Long id, @RequestBody Producto producto) {
-        if (!productoRepository.existsById(id)) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        producto.setId(id);
-        Producto productoActualizado = productoRepository.save(producto);
-        return ResponseEntity.ok(productoActualizado);
-    }
-
-    @DeleteMapping("/producto/{id}")
-    public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {
-        if (!productoRepository.existsById(id)) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        productoRepository.deleteById(id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-    }
 
     // Métodos para clientes
-    @GetMapping("/clientes") // Endpoint para obtener todos los clientes
+    @GetMapping("/cliente") // Endpoint para obtener todos los clientes
     public List<Cliente> getAllClientes() {
         return clienteService.getAllClientes();
     }
 
     // Métodos para ventas
-    @GetMapping("/ventas") // Obtener todas las ventas
+    @GetMapping("/venta") // Obtener todas las ventas
     public ResponseEntity<List<Venta>> obtenerTodasLasVentas() {
         List<Venta> ventas = ventaService.obtenerTodasLasVentas();
         return ResponseEntity.ok(ventas);
@@ -162,7 +115,7 @@ public class FybecaController {
         }
     }
 
-    @DeleteMapping("/eliminar-ventas-forma-masiva")
+    @DeleteMapping("/ventas-forma-masiva")
     public ResponseEntity<Void> eliminarVentas(@RequestBody List<Long> ids) {
         if (ventaService.eliminarVentas(ids)) {
             return ResponseEntity.ok().build();
@@ -171,7 +124,7 @@ public class FybecaController {
         }
     }
 
-    @PostMapping("/subir-archivo")
+    @PostMapping("/subir-archivo-venta")
     public ResponseEntity<String> subirArchivo(@RequestParam("file") MultipartFile file) {
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -183,68 +136,18 @@ public class FybecaController {
                 if (row != null) {
                     Venta venta = new Venta();
 
-                    if (row.getCell(0) != null && row.getCell(0).getCellType() == CellType.NUMERIC) {
-                        venta.setAnio((int) row.getCell(0).getNumericCellValue());
-                    }
-                    if (row.getCell(1) != null && row.getCell(1).getCellType() == CellType.NUMERIC) {
-                        venta.setMes((int) row.getCell(1).getNumericCellValue());
-                    }
-                    if (row.getCell(2) != null) {
-                        if (row.getCell(2).getCellType() == CellType.NUMERIC) {
-                            venta.setVenta_Dolares(row.getCell(2).getNumericCellValue());
-                        } else if (row.getCell(2).getCellType() == CellType.STRING) {
-                            try {
-                                venta.setVenta_Dolares(Double.parseDouble(row.getCell(2).getStringCellValue()));
-                            } catch (NumberFormatException e) {
-                                e.printStackTrace(); // Manejar el error si el valor no es un número válido
-                            }
-                        }
-                    }
-                    if (row.getCell(3) != null && row.getCell(3).getCellType() == CellType.NUMERIC) {
-                        venta.setVenta_Unidad(row.getCell(3).getNumericCellValue());
-                    }
-                    if (row.getCell(4) != null) {
-                        if (row.getCell(4).getCellType() == CellType.STRING) {
-                            venta.setCodBarra(row.getCell(4).getStringCellValue());
-                        } else if (row.getCell(4).getCellType() == CellType.NUMERIC) {
-                            row.getCell(4).setCellType(CellType.STRING);
-                            venta.setCodBarra(row.getCell(4).getStringCellValue());
-                        }
-                    }
-                    if (row.getCell(5) != null) {
-                        if (row.getCell(5).getCellType() == CellType.STRING) {
-                            venta.setCod_Pdv(row.getCell(5).getStringCellValue());
-                        } else if (row.getCell(5).getCellType() == CellType.NUMERIC) {
-                            row.getCell(5).setCellType(CellType.STRING);
-                            venta.setCod_Pdv(row.getCell(5).getStringCellValue());
-                        }
-                    }
-                    if (row.getCell(6) != null) {
-                        if (row.getCell(6).getCellType() == CellType.STRING) {
-                            venta.setPdv(row.getCell(6).getStringCellValue());
-                        } else if (row.getCell(6).getCellType() == CellType.NUMERIC) {
-                            row.getCell(6).setCellType(CellType.STRING);
-                            venta.setPdv(row.getCell(6).getStringCellValue());
-                        }
-                    }
-                    if (row.getCell(7) != null) {
-                        if (row.getCell(7).getCellType() == CellType.NUMERIC) {
-                            venta.setStock_Dolares(row.getCell(7).getNumericCellValue());
-                        } else if (row.getCell(7).getCellType() == CellType.STRING) {
-                            try {
-                                venta.setStock_Dolares(Double.parseDouble(row.getCell(7).getStringCellValue()));
-                            } catch (NumberFormatException e) {
-                                e.printStackTrace(); // Manejar el error si el valor no es un número válido
-                            }
-                        }
-                    }
-                    if (row.getCell(8) != null && row.getCell(8).getCellType() == CellType.NUMERIC) {
-                        venta.setStock_Unidades(row.getCell(8).getNumericCellValue());
-                    }
+                    venta.setAnio(obtenerValorCelda(row.getCell(0), CellType.NUMERIC, Integer.class));
+                    venta.setMes(obtenerValorCelda(row.getCell(1), CellType.NUMERIC, Integer.class));
+                    venta.setVenta_Dolares(obtenerValorCelda(row.getCell(2), CellType.NUMERIC, Double.class));
+                    venta.setVenta_Unidad(obtenerValorCelda(row.getCell(3), CellType.NUMERIC, Double.class));
+                    venta.setCodBarra(obtenerValorCelda(row.getCell(4), CellType.STRING, String.class));
+                    venta.setCod_Pdv(obtenerValorCelda(row.getCell(5), CellType.STRING, String.class));
+                    venta.setPdv(obtenerValorCelda(row.getCell(6), CellType.STRING, String.class));
+                    venta.setStock_Dolares(obtenerValorCelda(row.getCell(7), CellType.NUMERIC, Double.class));
+                    venta.setStock_Unidades(obtenerValorCelda(row.getCell(8), CellType.NUMERIC, Double.class));
 
                     // Llamar al servicio para cargar los datos del producto
                     boolean datosCargados = ventaService.cargarDatosDeProducto(venta);
-
                     if (!datosCargados) {
                         return new ResponseEntity<>("El código de barra no existe en el sistema", HttpStatus.BAD_REQUEST);
                     }
@@ -272,6 +175,26 @@ public class FybecaController {
             return new ResponseEntity<>("Error al procesar el archivo", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    private <T> T obtenerValorCelda(Cell cell, CellType expectedType, Class<T> clazz) {
+        if (cell == null) return null;
+        try {
+            if (cell.getCellType() == expectedType) {
+                if (clazz == Integer.class) {
+                    return clazz.cast((int) cell.getNumericCellValue());
+                } else if (clazz == Double.class) {
+                    return clazz.cast(cell.getNumericCellValue());
+                } else if (clazz == String.class) {
+                    return clazz.cast(cell.getStringCellValue());
+                }
+            }
+        } catch (Exception e) {
+            // Manejo de error en la conversión de valores
+            e.printStackTrace();
+        }
+        return null; // Si no es del tipo esperado
+    }
+
     
     // Endpoint para obtener todas las marcas disponibles
     @GetMapping("/marcas-ventas")
@@ -279,25 +202,25 @@ public class FybecaController {
         return ventaService.obtenerMarcasDisponibles();
     }
     
-    // Métodos para mantenimiento de clientes
-    @GetMapping("/mantenimiento/clientes")
+    // Métodos Para la Tabla de CLientes
+    @GetMapping("/mantenimiento-cliente")
     public List<MantenimientoCliente> tablaMantenimientoClientes() {
         return serviceClienteService.getAllClientes();
     }
 
-    @GetMapping("/mantenimiento/cliente/{id}")
+    @GetMapping("/mantenimiento-cliente/{id}")
     public ResponseEntity<MantenimientoCliente> obtenerMantenimientoCliente(@PathVariable Long id) {
         return serviceClienteService.getClienteById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PostMapping("/mantenimiento/cliente")
+    @PostMapping("/mantenimiento-cliente")
     public MantenimientoCliente crearMantenimientoCliente(@RequestBody MantenimientoCliente cliente) {
         return serviceClienteService.saveOrUpdate(cliente);
     }
 
-    @PutMapping("/mantenimiento/cliente/{id}")
+    @PutMapping("/mantenimiento-cliente/{id}")
     public ResponseEntity<MantenimientoCliente> actualizarMantenimientoCliente(@PathVariable Long id, @RequestBody MantenimientoCliente cliente) {
         if (!serviceClienteService.getClienteById(id).isPresent()) {
             return ResponseEntity.notFound().build();
@@ -306,7 +229,7 @@ public class FybecaController {
         return ResponseEntity.ok(serviceClienteService.saveOrUpdate(cliente));
     }
 
-    @DeleteMapping("/mantenimiento/cliente/{id}")
+    @DeleteMapping("/mantenimiento-cliente/{id}")
     public ResponseEntity<Void> eliminarMantenimientoCliente(@PathVariable Long id) {
         if (!serviceClienteService.getClienteById(id).isPresent()) {
             return ResponseEntity.notFound().build();
@@ -315,23 +238,23 @@ public class FybecaController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/mantenimiento/clientes/upload")
+    @PostMapping("/mantenimiento-cliente/upload")
     public String uploadClientes(@RequestParam("file") MultipartFile file) {
         return servicio.uploadClientesFromExcel(file);
     }
 
     // Métodos para mantenimiento de productos
-    @GetMapping("/mantenimiento/productos")
+    @GetMapping("/mantenimiento-productos")
     public List<MantenimientoProducto> tablaMantenimientoProductos() {
         return serviceProductoService.getAllProductos();
     }
 
-    @PostMapping("/mantenimiento/producto")
+    @PostMapping("/mantenimiento-producto")
     public MantenimientoProducto crearMantenimientoProducto(@RequestBody MantenimientoProducto producto) {
         return serviceProductoService.saveOrUpdate(producto);
     }
 
-    @PostMapping("/mantenimiento/productos/cargar")
+    @PostMapping("/template-mantenimiento-productos")
     public ResponseEntity<String> cargarProductosDesdeArchivo(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             return new ResponseEntity<>("Por favor, seleccione un archivo", HttpStatus.BAD_REQUEST);
@@ -396,7 +319,7 @@ public class FybecaController {
         }
     }
 
-    @DeleteMapping("/mantenimiento/productos/eliminar")
+    @DeleteMapping("/mantenimiento-productos")
     public ResponseEntity<String> eliminarProductos(@RequestBody List<Long> ids) {
         try {
             mantenimientoProductoService.deleteProductos(ids);
@@ -409,25 +332,25 @@ public class FybecaController {
 
     //CRUD de tabla Tipo Mueble
 
-    @PostMapping("/crear-nuevo-tipo-mueble")
+    @PostMapping("/tipo-mueble")
     public ResponseEntity<TipoMueble> crearTipoMueble(@RequestBody TipoMueble tipoMueble) {
         TipoMueble nuevoTipoMueble = tipoMuebleService.guardarTipoMueble(tipoMueble);
         return ResponseEntity.ok(nuevoTipoMueble);
     }
 
-    @GetMapping("/find-all-tipo-mueble")
+    @GetMapping("/tipo-mueble")
     public ResponseEntity<List<TipoMueble>> obtenerTodosLosTiposMueble() {
         List<TipoMueble> tiposMueble = tipoMuebleService.obtenerTodosLosTiposMueble();
         return ResponseEntity.ok(tiposMueble);
     }
 
-    @GetMapping("/find-id-tipo-mueble/{id}")
+    @GetMapping("/tipo-mueble/{id}")
     public ResponseEntity<TipoMueble> obtenerTipoMueblePorId(@PathVariable Long id) {
         Optional<TipoMueble> tipoMueble = tipoMuebleService.obtenerTipoMueblePorId(id);
         return tipoMueble.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/actualizar-tipo-mueble/{id}")
+    @PutMapping("/tipo-mueble/{id}")
     public ResponseEntity<TipoMueble> actualizarTipoMueble(@PathVariable Long id, @RequestBody TipoMueble nuevoTipoMueble) {
         try {
             TipoMueble tipoMuebleActualizado = tipoMuebleService.actualizarTipoMueble(id, nuevoTipoMueble);
@@ -437,7 +360,7 @@ public class FybecaController {
         }
     }
 
-    @DeleteMapping("/eliminar-id-tipo-mueble/{id}")
+    @DeleteMapping("/tipo-mueble/{id}")
     public ResponseEntity<Void> eliminarTipoMueble(@PathVariable Long id) {
         if (tipoMuebleService.eliminarTipoMueble(id)) {
             return ResponseEntity.ok().build();
@@ -446,7 +369,7 @@ public class FybecaController {
         }
     }
 
-    @PostMapping("/subir-template-tipo-muebles")
+    @PostMapping("/template-tipo-muebles")
     public ResponseEntity<List<TipoMueble>> subirTipoMuebles(@RequestParam("file") MultipartFile file) {
         List<TipoMueble> tipoMuebles = tipoMuebleService.cargarTipoMueblesDesdeArchivo(file);
         return ResponseEntity.ok(tipoMuebles);
@@ -468,5 +391,194 @@ public class FybecaController {
             workbook.write(out);
             return out.toByteArray();
         }
-    }       
+    }  
+    
+    // Método para descargar reporte de Ventas
+    @GetMapping("/reporte-ventas")
+    public ResponseEntity<byte[]> generarReporteVentas() {
+        try {
+            List<Venta> ventas = ventaService.obtenerTodasLasVentas();
+
+            // Crear libro de Excel
+            XSSFWorkbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("Ventas");
+
+            // Crear encabezados
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Año");
+            header.createCell(1).setCellValue("Mes");
+            header.createCell(2).setCellValue("Marca");
+            header.createCell(3).setCellValue("Código Cliente");
+            header.createCell(4).setCellValue("Nombre Cliente");
+            header.createCell(5).setCellValue("Código Barra SAP");
+            header.createCell(6).setCellValue("Código Producto SAP");
+            header.createCell(7).setCellValue("Código Item");
+            header.createCell(8).setCellValue("Nombre Producto");
+            header.createCell(9).setCellValue("Código PDV");
+            header.createCell(10).setCellValue("Ciudad");
+            header.createCell(11).setCellValue("PDV");
+            header.createCell(12).setCellValue("Stock en Dólares");
+            header.createCell(13).setCellValue("Stock en Unidades");
+            header.createCell(14).setCellValue("Venta en Dólares");
+            header.createCell(15).setCellValue("Venta en Unidades");
+
+            // Llenar datos
+            int rowNum = 1;
+            for (Venta venta : ventas) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(venta.getAnio());
+                row.createCell(1).setCellValue(venta.getMes());
+                row.createCell(2).setCellValue(venta.getMarca());
+
+                // MantenimientoCliente
+                if (venta.getMantenimientoCliente() != null) {
+                    row.createCell(3).setCellValue(venta.getMantenimientoCliente().getCod_Cliente());
+                    row.createCell(4).setCellValue(venta.getMantenimientoCliente().getNombre_Cliente());
+                    row.createCell(10).setCellValue(venta.getMantenimientoCliente().getCiudad());
+                } else {
+                    row.createCell(3).setCellValue("N/A");
+                    row.createCell(4).setCellValue("N/A");
+                    row.createCell(10).setCellValue("N/A");
+                }
+
+                row.createCell(5).setCellValue(venta.getCodBarra());
+                row.createCell(6).setCellValue(venta.getCodigo_Sap());
+
+                // MantenimientoProducto
+                if (venta.getMantenimientoProducto() != null) {
+                    row.createCell(7).setCellValue(venta.getMantenimientoProducto().getCod_Item());
+                    row.createCell(8).setCellValue(venta.getNombre_Producto());
+                } else {
+                    row.createCell(7).setCellValue("N/A");
+                    row.createCell(8).setCellValue("N/A");
+                }
+
+                row.createCell(9).setCellValue(venta.getCod_Pdv());
+                row.createCell(11).setCellValue(venta.getPdv());
+                row.createCell(12).setCellValue(venta.getStock_Dolares());
+                row.createCell(13).setCellValue(venta.getStock_Unidades());
+                row.createCell(14).setCellValue(venta.getVenta_Dolares());
+                row.createCell(15).setCellValue(venta.getVenta_Unidad());
+            }
+
+            // Convertir a bytes
+            byte[] byteArray = ExcelUtils.convertWorkbookToByteArray(workbook);
+
+            // Cerrar el archivo
+            workbook.close();
+
+            // Retornar el archivo Excel
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .header("Content-Disposition", "attachment; filename=reporte_ventas.xlsx")
+                    .body(byteArray);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
+    @GetMapping("/reporte-mantenimiento-productos")
+    public ResponseEntity<byte[]> generarReporteMantenimientoProductos() {
+        try {
+            List<MantenimientoProducto> productos = repository.findAll();
+
+            // Crear libro de Excel
+            XSSFWorkbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("Mantenimiento Productos");
+
+            // Crear encabezados
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Código Item");
+            header.createCell(1).setCellValue("Código Barra SAP");
+
+            // Llenar datos
+            int rowNum = 1;
+            for (MantenimientoProducto producto : productos) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(producto.getCod_Item());
+                row.createCell(1).setCellValue(producto.getCod_Barra_Sap());
+            }
+
+            // Convertir a bytes
+            byte[] byteArray = ExcelUtils.convertWorkbookToByteArray(workbook);
+
+            // Cerrar el archivo
+            workbook.close();
+
+            // Retornar el archivo Excel
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .header("Content-Disposition", "attachment; filename=reporte_mantenimiento_productos.xlsx")
+                    .body(byteArray);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
+    @GetMapping("/reporte-tipo-mueble")
+    public ResponseEntity<byte[]> generarReporteTipoMueble() {
+        try {
+            // Obtener todos los tipos de mueble
+            List<TipoMueble> tiposMueble = tipoMuebleService.obtenerTodosLosTiposMueble();
+
+            // Crear libro de Excel
+            XSSFWorkbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("Tipos de Mueble");
+
+            // Crear encabezados
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Código Cliente");
+            header.createCell(1).setCellValue("Nombre Cliente");
+            header.createCell(2).setCellValue("Ciudad");
+            header.createCell(3).setCellValue("Código PDV");
+            header.createCell(4).setCellValue("Nombre PDV");
+            header.createCell(5).setCellValue("Tipo Display Essence");
+            header.createCell(6).setCellValue("Tipo Mueble Display Catrice");
+
+            // Llenar datos
+            int rowNum = 1;
+            for (TipoMueble tipoMueble : tiposMueble) {
+                Row row = sheet.createRow(rowNum++);
+                
+                // Asegurarse de que el MantenimientoCliente no sea null
+                if (tipoMueble.getMantenimientoCliente() != null) {
+                    row.createCell(0).setCellValue(tipoMueble.getMantenimientoCliente().getCod_Cliente());
+                    row.createCell(1).setCellValue(tipoMueble.getMantenimientoCliente().getNombre_Cliente());
+                    row.createCell(2).setCellValue(tipoMueble.getMantenimientoCliente().getCiudad());
+                } else {
+                    row.createCell(0).setCellValue("N/A");
+                    row.createCell(1).setCellValue("N/A");
+                    row.createCell(2).setCellValue("N/A");
+                }
+                
+                // Otros campos de TipoMueble
+                row.createCell(3).setCellValue(tipoMueble.getCod_Pdv());
+                row.createCell(4).setCellValue(tipoMueble.getNombre_Pdv());
+                row.createCell(5).setCellValue(tipoMueble.getTipo_Display_Essence());
+                row.createCell(6).setCellValue(tipoMueble.getTipo_Mueble_Display_Catrice());
+            }
+
+            // Convertir a bytes
+            byte[] byteArray = ExcelUtils.convertWorkbookToByteArray(workbook);
+
+            // Cerrar el archivo
+            workbook.close();
+
+            // Retornar el archivo Excel
+            return ResponseEntity.ok()
+                    .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    .header("Content-Disposition", "attachment; filename=reporte_tipo_mueble.xlsx")
+                    .body(byteArray);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

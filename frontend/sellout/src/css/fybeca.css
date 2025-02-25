@@ -596,3 +596,36 @@ select:focus {
     font-size: 16px;
     margin: 0 10px;
   }
+h3 {
+    color: #000 ;
+}
+.custom-toast .p-toast {
+  top: calc(12cm + 50px) !important; /* Baja el Toast más abajo en la pantalla */
+  left: 50% !important;
+  transform: translate(-50%, 0) !important; /* Mantener centrado */
+  position: fixed !important;
+  width: 600px !important;  /* Aumenta el tamaño del Toast */
+  max-width: 90% !important; /* Evita que sea más ancho que la pantalla */
+  z-index: 9999 !important;  /* Asegura que esté sobre otros elementos */
+  background: rgba(255, 255, 255, 0.98) !important; /* Fondo casi blanco */
+  padding: 30px !important; /* Espaciado interno más grande */
+  border-radius: 15px !important; /* Bordes más redondeados */
+  box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.5) !important; /* Sombra para mayor contraste */
+  border: 3px solid #4CAF50 !important; /* Agrega un borde verde llamativo */
+}
+
+/* Cambiar el color y tamaño del texto dentro del Toast */
+.custom-toast .p-toast .p-toast-message {
+  color: #006400 !important; /* Verde oscuro para mejor contraste */
+  font-size: 70px !important; /* Texto aún más grande */
+  font-weight: bold !important; /* Hace que el texto sea más grueso */
+  text-align: center !important; /* Asegurar que el texto esté centrado */
+}
+
+/* Opcional: Cambiar el color del icono */
+.custom-toast .p-toast .p-toast-icon {
+  color: #006400 !important; /* Ícono verde oscuro */
+  font-size: 80px !important; /* Ícono más grande */
+}
+
+

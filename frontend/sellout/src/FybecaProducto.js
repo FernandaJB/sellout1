@@ -7,12 +7,19 @@ const FybecaProducto = () => {
   const [error, setError] = useState(null);
   const [productoEditar, setProductoEditar] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [filtros, setFiltros] = useState({
+    nombre: '',
+    codigoSap: '',
+    descripcion: ''
+  });
 
+  // Función para cargar productos con filtros aplicados
   const loadProductos = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/productos");
+      const queryParams = new URLSearchParams(filtros).toString();
+      const response = await fetch(`http://localhost:8082/api/reportes/productos?${queryParams}`);
       if (!response.ok) {
         throw new Error(`Error al cargar productos: ${response.statusText}`);
       }
@@ -23,6 +30,21 @@ const FybecaProducto = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Maneja cambios en los filtros
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFiltros((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Maneja el envío del formulario de filtros
+  const handleApplyFilters = (e) => {
+    e.preventDefault();
+    loadProductos();  // Recargar productos con los filtros aplicados
   };
 
   const handleEdit = (id) => {
@@ -82,7 +104,7 @@ const FybecaProducto = () => {
 
   useEffect(() => {
     loadProductos();
-  }, []);
+  }, [filtros]); // Recargar productos cuando los filtros cambian
 
   return (
     <div className="container">
@@ -95,6 +117,33 @@ const FybecaProducto = () => {
       ) : (
         <>
           <h2>Lista de Productos</h2>
+
+          {/* Filtros de productos */}
+          <form onSubmit={handleApplyFilters}>
+            <label>Nombre</label>
+            <input
+              type="text"
+              name="nombre"
+              value={filtros.nombre}
+              onChange={handleFilterChange}
+            />
+            <label>Código SAP</label>
+            <input
+              type="text"
+              name="codigoSap"
+              value={filtros.codigoSap}
+              onChange={handleFilterChange}
+            />
+            <label>Descripción</label>
+            <input
+              type="text"
+              name="descripcion"
+              value={filtros.descripcion}
+              onChange={handleFilterChange}
+            />
+            <button type="submit" className="btn-filter">Aplicar Filtros</button>
+          </form>
+
           <div className="table-wrapper">
             <table>
               <thead>

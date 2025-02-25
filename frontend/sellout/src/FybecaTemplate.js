@@ -3,6 +3,13 @@ import "./css/fybeca.css";
 import "@fortawesome/fontawesome-free/css/all.min.css"; // Importar Font Awesome
 import "@fortawesome/fontawesome-free/css/all.min.css"; // Importar Font Awesome
 import * as XLSX from 'xlsx'; // Importar la librería XLSX
+import { Message } from 'primereact/message';
+import { Toast } from 'primereact/toast';
+import { useRef } from "react";  // Para manejar referencias en el Toast
+import "primereact/resources/themes/lara-light-indigo/theme.css";  // Tema de PrimeReact
+import "primereact/resources/primereact.min.css";  // Estilos base
+import "primeicons/primeicons.css"; // Iconos
+
 const Fybeca = () => {
   const [ventas, setVentas] = useState([]);
   const [loadingVentas, setLoadingVentas] = useState(false);
@@ -19,12 +26,16 @@ const Fybeca = () => {
   const [year, setYear] = useState(new Date().getFullYear()); // Por defecto, el año actual
   const [month, setMonth] = useState(new Date().getMonth() + 1); // Por defecto, el mes actual
   const [data, setData] = useState(null); 
+
   //Funcion para sacar reportes 
+
+  const toast = useRef(null);
+
   const downloadVentasReport = async () => {
     setLoadingVentas(true); // Establece el estado de carga
   
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/reportes/ventas", {
+      const response = await fetch("http://localhost:8082/api/fybeca/reporte-venta", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -71,7 +82,7 @@ const Fybeca = () => {
     if (!confirmDelete) return;
   
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/eliminar-ventas-forma-masiva", {
+      const response = await fetch("http://localhost:8082/api/fybeca/ventas-forma-masiva", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -105,7 +116,7 @@ const Fybeca = () => {
     setErrorVentas("");
     try {
       // Construye la URL incluyendo los filtros si están definidos
-      let url = `http://localhost:8082/api/fybeca/ventas?page=${page}&size=${itemsPerPage}`;
+      let url = `http://localhost:8082/api/fybeca/venta?page=${page}&size=${itemsPerPage}`;
       if (year) {
         url += `&year=${year}`;
       }
@@ -176,7 +187,7 @@ const renderPagination = () => {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/subir-archivo", {
+      const response = await fetch("http://localhost:8082/api/fybeca/subir-archivo-venta", {
         method: "POST",
         body: formData,
       });
@@ -212,23 +223,40 @@ const renderPagination = () => {
   // Función para actualizar una venta
   const actualizarVenta = async (venta) => {
     try {
-      const response = await fetch(`http://localhost:8082/api/fybeca/venta/${venta.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(venta),
-      });
+        const response = await fetch(`http://localhost:8082/api/fybeca/venta/${venta.id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(venta),
+        });
 
-      if (!response.ok) throw new Error(`Error al actualizar la venta: ${response.statusText}`);
+        if (!response.ok) throw new Error(`Error al actualizar la venta: ${response.statusText}`);
 
-      setSuccessMessage("Venta actualizada correctamente.");
-      setEditVenta(null);
-      loadVentas(); // Recargar las ventas después de actualizar
+        setEditVenta(null);
+        loadVentas(); // Recargar las ventas después de actualizar
+        
+        if (toast.current) {
+            toast.current.show({ 
+                severity: 'success', 
+                summary: 'Éxito', 
+                detail: 'Venta actualizada correctamente.', 
+                life: 3000
+            });
+        }
     } catch (error) {
-      setErrorVentas(error.message);
+        if (toast.current) {
+            toast.current.show({ 
+                severity: 'error', 
+                summary: 'Error', 
+                detail: error.message, 
+                life: 3000
+            });
+        }
     }
   };
+
+
 
   //Manekar el estado de paginacion
   const [currentPage, setCurrentPage] = useState(1);
@@ -267,6 +295,7 @@ const renderPagination = () => {
   // Solo cargar marcas al montar el componente
   useEffect(() => {
     loadMarcas();
+    console.log("Toast está listo:", toast.current);
   }, [year, month]); 
   
   
@@ -314,11 +343,9 @@ const renderPagination = () => {
 
   return (
     <div className="container">
+        
       <h1>Ventas Fybeca</h1>
-
-      {errorVentas && <p className="error">{errorVentas}</p>}
-      {successMessage && <p className="success">{successMessage}</p>}
-
+      <Toast ref={toast} className="custom-toast"/>
       <h2>Ventas</h2>
 
       <div className="upload-section">
