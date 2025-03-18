@@ -28,8 +28,9 @@ import org.springframework.http.HttpStatus;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-
+import org.springframework.core.io.Resource;
 @RestController
 @RequestMapping("/api/fybeca")
 @CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
@@ -123,77 +124,129 @@ public class FybecaController {
     }
 
     @PostMapping("/subir-archivo-venta")
-    public ResponseEntity<String> subirArchivo(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<Resource> subirArchivo(@RequestParam("file") MultipartFile file) {
+        List<String> codigosNoEncontrados = new ArrayList<>();
+
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
             List<Venta> ventas = new ArrayList<>();
 
-            // Iterar sobre todas las filas a partir de la fila 2 (índice 1)
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row != null) {
                     Venta venta = new Venta();
 
-                    venta.setAnio(obtenerValorCelda(row.getCell(0), CellType.NUMERIC, Integer.class));
-                    venta.setMes(obtenerValorCelda(row.getCell(1), CellType.NUMERIC, Integer.class));
-                    venta.setVenta_Dolares(obtenerValorCelda(row.getCell(2), CellType.NUMERIC, Double.class));
-                    venta.setVenta_Unidad(obtenerValorCelda(row.getCell(3), CellType.NUMERIC, Double.class));
-                    venta.setCodBarra(obtenerValorCelda(row.getCell(4), CellType.STRING, String.class));
-                    venta.setCod_Pdv(obtenerValorCelda(row.getCell(5), CellType.STRING, String.class));
-                    venta.setPdv(obtenerValorCelda(row.getCell(6), CellType.STRING, String.class));
-                    venta.setStock_Dolares(obtenerValorCelda(row.getCell(7), CellType.NUMERIC, Double.class));
-                    venta.setStock_Unidades(obtenerValorCelda(row.getCell(8), CellType.NUMERIC, Double.class));
+                    venta.setAnio(obtenerValorCelda(row.getCell(0), Integer.class));
+                    venta.setMes(obtenerValorCelda(row.getCell(1), Integer.class));
+                    venta.setDia(obtenerValorCelda(row.getCell(2), Integer.class));
+                    venta.setVenta_Dolares(obtenerValorCelda(row.getCell(3), Double.class));
+                    venta.setVenta_Unidad(obtenerValorCelda(row.getCell(4), Double.class));
+                    venta.setCodBarra(obtenerValorCelda(row.getCell(5), String.class));
 
-                    // Llamar al servicio para cargar los datos del producto
-                    boolean datosCargados = ventaService.cargarDatosDeProducto(venta);
-                    if (!datosCargados) {
-                        return new ResponseEntity<>("El código de barra no existe en el sistema", HttpStatus.BAD_REQUEST);
+                    venta.setCod_Pdv(obtenerValorCelda(row.getCell(6), String.class));
+                    if (venta.getCod_Pdv() == null || venta.getCod_Pdv().isEmpty()) {
+                        System.err.println("Advertencia: cod_Pdv vacío en la fila " + i);
                     }
 
-                    // Agregar la venta a la lista
+                    venta.setPdv(obtenerValorCelda(row.getCell(7), String.class));
+                    venta.setStock_Dolares(obtenerValorCelda(row.getCell(8), Double.class));
+                    venta.setStock_Unidades(obtenerValorCelda(row.getCell(9), Double.class));
+
+                    if (venta.getCodBarra() == null || venta.getCodBarra().trim().isEmpty()) {
+                        codigosNoEncontrados.add("Fila " + i + ": Código de barra vacío");
+                        continue;
+                    }
+
+                    boolean datosCargados = ventaService.cargarDatosDeProducto(venta);
+                    if (!datosCargados) {
+                        codigosNoEncontrados.add("Fila " + i + ": " + venta.getCodBarra());
+                        continue;
+                    }
+
                     ventas.add(venta);
                 }
             }
 
-            // Procesar las ventas en paralelo
             ExecutorService executor = Executors.newFixedThreadPool(4);
+            List<Future<?>> futures = new ArrayList<>();
             int batchSize = 100;
+
             for (int i = 0; i < ventas.size(); i += batchSize) {
                 int start = i;
                 int end = Math.min(i + batchSize, ventas.size());
                 List<Venta> batchList = ventas.subList(start, end);
-                executor.submit(() -> ventaService.guardarVentas(batchList));
+
+                Future<?> future = executor.submit(() -> {
+                    try {
+                        ventaService.guardarVentas(batchList);
+                    } catch (Exception e) {
+                        System.err.println("Error al guardar lote: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                });
+                futures.add(future);
             }
+
+            for (Future<?> future : futures) {
+                try {
+                    future.get();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
             executor.shutdown();
             executor.awaitTermination(1, TimeUnit.HOURS);
 
-            return ResponseEntity.ok("Archivo subido y procesado correctamente.");
+            return ventaService.obtenerArchivoCodigosNoEncontrados(codigosNoEncontrados);
+
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
-            return new ResponseEntity<>("Error al procesar el archivo", HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.internalServerError().build();
         }
     }
 
-    private <T> T obtenerValorCelda(Cell cell, CellType expectedType, Class<T> clazz) {
+    private <T> T obtenerValorCelda(Cell cell, Class<T> clazz) {
         if (cell == null) return null;
+
         try {
-            if (cell.getCellType() == expectedType) {
-                if (clazz == Integer.class) {
-                    return clazz.cast((int) cell.getNumericCellValue());
-                } else if (clazz == Double.class) {
-                    return clazz.cast(cell.getNumericCellValue());
-                } else if (clazz == String.class) {
-                    return clazz.cast(cell.getStringCellValue());
-                }
+            switch (cell.getCellType()) {
+                case NUMERIC:
+                    if (clazz == Integer.class) {
+                        return clazz.cast((int) cell.getNumericCellValue());
+                    } else if (clazz == Double.class) {
+                        return clazz.cast(cell.getNumericCellValue());
+                    } else if (clazz == String.class) {
+                        return clazz.cast(String.valueOf((int) cell.getNumericCellValue()));
+                    }
+                    break;
+                case STRING:
+                    String value = cell.getStringCellValue().trim();
+                    if (clazz == Integer.class) {
+                        return clazz.cast(Integer.parseInt(value));
+                    } else if (clazz == Double.class) {
+                        return clazz.cast(Double.parseDouble(value));
+                    } else {
+                        return clazz.cast(value);
+                    }
+                case BLANK:
+                    return null;
+                default:
+                    return null;
             }
         } catch (Exception e) {
-            // Manejo de error en la conversión de valores
+            System.err.println("Error al convertir celda: " + cell.toString());
             e.printStackTrace();
         }
-        return null; // Si no es del tipo esperado
+        return null;
     }
 
-    
+    @GetMapping("/reporte-ranquin-ventas")
+    public ResponseEntity<List<Object[]>> obtenerReporteVentas() {
+        List<Object[]> resultado = ventaService.obtenerReporteVentas();
+        return ResponseEntity.ok(resultado);
+    }
+
     // Endpoint para obtener todas las marcas disponibles
     @GetMapping("/marcas-ventas")
     public List<String> obtenerMarcasDisponibles() {
@@ -434,6 +487,7 @@ public class FybecaController {
                     row.createCell(4).setCellValue(venta.getMantenimientoCliente().getNombre_Cliente());
                     row.createCell(10).setCellValue(venta.getMantenimientoCliente().getCiudad());
                 } else {
+                    
                     row.createCell(3).setCellValue("N/A");
                     row.createCell(4).setCellValue("N/A");
                     row.createCell(10).setCellValue("N/A");
@@ -459,12 +513,11 @@ public class FybecaController {
                 row.createCell(15).setCellValue(venta.getVenta_Unidad());
             }
 
+        
             // Convertir a bytes
             byte[] byteArray = ExcelUtils.convertWorkbookToByteArray(workbook);
-
             // Cerrar el archivo
             workbook.close();
-
             // Retornar el archivo Excel
             return ResponseEntity.ok()
                     .header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -548,7 +601,7 @@ public class FybecaController {
                 if (tipoMueble.getMantenimientoCliente() != null) {
                     row.createCell(0).setCellValue(tipoMueble.getMantenimientoCliente().getCod_Cliente());
                     row.createCell(1).setCellValue(tipoMueble.getMantenimientoCliente().getNombre_Cliente());
-                    row.createCell(2).setCellValue(tipoMueble.getMantenimientoCliente().getCiudad());
+                    row.createCell(2).setCellValue(tipoMueble.getCiudad());
                 } else {
                     row.createCell(0).setCellValue("N/A");
                     row.createCell(1).setCellValue("N/A");
@@ -579,4 +632,6 @@ public class FybecaController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    
 }

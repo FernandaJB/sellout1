@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit, faFileUpload, faFileDownload } from "@fortawesome/free-solid-svg-icons";
 import "./css/fybeca.css"; // Asegúrate de tener tu archivo CSS
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 const FybecaMantenimientoProducto = () => {
   const [productos, setProductos] = useState([]);
@@ -71,27 +72,25 @@ const FybecaMantenimientoProducto = () => {
   // Crear o actualizar un producto
   const handleSaveProducto = async (e) => {
     e.preventDefault();
+    setLoading(true); // Activa el spinner mientras se guarda el producto
     try {
       const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento-producto", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(productoEditar),
       });
       if (!response.ok) {
         throw new Error("Error al guardar el producto");
       }
-      // Manejar la respuesta exitosa aquí
-      loadProductos(); // Recargar la lista de productos
+      await loadProductos(); // 🔄 Recargar lista de productos después de guardar
       setShowModal(false);
     } catch (error) {
-      console.error(error);
-      // Manejar el error aquí
+      setError(error.message);
     } finally {
-      setLoading(false);
+      setLoading(false); // Desactiva el spinner después del proceso
     }
   };
+  
 
   // Editar producto
   const handleEdit = (id) => {
@@ -124,10 +123,11 @@ const FybecaMantenimientoProducto = () => {
       alert("Por favor, seleccione un archivo");
       return;
     }
-
+  
+    setLoading(true); // Activa el spinner antes de subir el archivo
     const formData = new FormData();
     formData.append("file", file);
-
+  
     try {
       const response = await fetch("http://localhost:8082/api/fybeca/template-mantenimiento-productos", {
         method: "POST",
@@ -136,58 +136,64 @@ const FybecaMantenimientoProducto = () => {
       if (!response.ok) {
         throw new Error("Error al cargar el archivo");
       }
-      const result = await response.text();
-      alert(result); // Mensaje de éxito
-      loadProductos(); // Recargar la lista de productos
+      alert(await response.text()); // Mensaje de éxito
+      await loadProductos(); // 🔄 Recargar lista de productos
     } catch (error) {
       setError(error.message);
+    } finally {
+      setLoading(false); // Desactiva el spinner después del proceso
     }
   };
+  
 
   // Eliminar productos seleccionados
   const handleDeleteSelected = async () => {
     const selectedIds = productos
       .filter((producto) => producto.selected)
       .map((producto) => producto.id);
-
+  
     if (selectedIds.length === 0) {
       alert("No hay productos seleccionados para eliminar.");
       return;
     }
-
+  
     const confirmDelete = window.confirm(
       `¿Estás seguro de eliminar ${selectedIds.length} producto(s)?`
     );
     if (!confirmDelete) return;
-
-    // Dividir los IDs en lotes de hasta 2000
+  
+    setLoading(true); // Activa el spinner antes de eliminar
+  
+    // 🔹 Definir `batches` correctamente
     const batchSize = 2000;
     const batches = [];
     for (let i = 0; i < selectedIds.length; i += batchSize) {
       batches.push(selectedIds.slice(i, i + batchSize));
     }
-
+  
     try {
       for (const batch of batches) {
         const response = await fetch("http://localhost:8082/api/fybeca/mantenimiento-productos", {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(batch), // Enviar la lista de IDs como JSON
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(batch),
         });
-
+  
         if (!response.ok) {
           throw new Error("Error al eliminar los productos en uno de los lotes");
         }
       }
-
+  
       alert("Productos eliminados correctamente.");
-      loadProductos(); // Recargar productos después de eliminar
+      await loadProductos(); // 🔄 Recargar productos después de eliminar
     } catch (error) {
       setError(error.message);
+    } finally {
+      setLoading(false); // Desactiva el spinner después del proceso
     }
   };
+  
+  
 
   // Filtrar productos por el filtro ingresado
   const filteredProductos = productos.filter((producto) => {
@@ -234,8 +240,18 @@ const FybecaMantenimientoProducto = () => {
       <h1>Mantenimiento Producto</h1>
 
       {loading ? (
-        <div className="loading-overlay">
-          <p className="loading">Cargando productos...</p>
+         <div style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "200px" // Ajusta la altura para centrar el spinner
+        }}>
+          <ProgressSpinner
+            style={{ width: "50px", height: "50px" }}
+            strokeWidth="6"
+            fill="var(--surface-ground)"
+            animationDuration="0.7s"
+          />
         </div>
       ) : error ? (
         <p className="error">Error: {error}</p>

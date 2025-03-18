@@ -33,4 +33,6 @@ public class TipoMueble {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_Cliente", referencedColumnName = "id")
     private MantenimientoCliente mantenimientoCliente;
+
+    private String ciudad;
 }
