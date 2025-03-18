@@ -2,8 +2,11 @@ package com.manamer.backend.business.sellout.service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
@@ -18,14 +21,13 @@ import com.manamer.backend.business.sellout.models.MantenimientoCliente;
 import com.manamer.backend.business.sellout.models.TipoMueble;
 import com.manamer.backend.business.sellout.repositories.MantenimientoClienteRepository;
 import com.manamer.backend.business.sellout.repositories.TipoMuebleRepository;
-
 @Service
 public class TipoMuebleService {
 
     private final TipoMuebleRepository tipoMuebleRepository;
 
     private final MantenimientoClienteRepository mantenimientoClienteRepository;
-
+    
     @Autowired
     public TipoMuebleService(TipoMuebleRepository tipoMuebleRepository, MantenimientoClienteRepository mantenimientoClienteRepository) {
         this.tipoMuebleRepository = tipoMuebleRepository;
@@ -51,6 +53,7 @@ public class TipoMuebleService {
             tipoMueble.setTipo_Display_Essence(nuevoTipoMueble.getTipo_Display_Essence());
             tipoMueble.setTipo_Mueble_Display_Catrice(nuevoTipoMueble.getTipo_Mueble_Display_Catrice());
             tipoMueble.setMantenimientoCliente(nuevoTipoMueble.getMantenimientoCliente());
+            tipoMueble.setCiudad(nuevoTipoMueble.getCiudad()); // Nuevo campo
             return tipoMuebleRepository.save(tipoMueble);
         }).orElseThrow(() -> new RuntimeException("TipoMueble no encontrado con el ID: " + id));
     }
@@ -75,6 +78,7 @@ public class TipoMuebleService {
                 tipoMueble.setNombre_Pdv(getCellValueAsString(row.getCell(1)));
                 tipoMueble.setTipo_Display_Essence(getCellValueAsString(row.getCell(2)));
                 tipoMueble.setTipo_Mueble_Display_Catrice(getCellValueAsString(row.getCell(3)));
+                tipoMueble.setCiudad(getCellValueAsString(row.getCell(4))); // Nuevo campo
 
                 // Asignar siempre el clienteId 5969
                 Long clienteId = 5969L;
@@ -91,7 +95,7 @@ public class TipoMuebleService {
         }
         return tipoMuebles;
     }
-
+    
     private String getCellValueAsString(Cell cell) {
         if (cell == null) {
             return "";

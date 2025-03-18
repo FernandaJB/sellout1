@@ -9,6 +9,7 @@ import { useRef } from "react";  // Para manejar referencias en el Toast
 import "primereact/resources/themes/lara-light-indigo/theme.css";  // Tema de PrimeReact
 import "primereact/resources/primereact.min.css";  // Estilos base
 import "primeicons/primeicons.css"; // Iconos
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 const Fybeca = () => {
   const [ventas, setVentas] = useState([]);
@@ -26,16 +27,62 @@ const Fybeca = () => {
   const [year, setYear] = useState(new Date().getFullYear()); // Por defecto, el año actual
   const [month, setMonth] = useState(new Date().getMonth() + 1); // Por defecto, el mes actual
   const [data, setData] = useState(null); 
+  const [ciudades, setCiudades] = useState({});
 
   //Funcion para sacar reportes 
-
   const toast = useRef(null);
+
+  // Estados
+  const [loadingReporte, setLoadingReporte] = useState(false);
+  const [errorReporte, setErrorReporte] = useState("");
+
+  // Función para generar el reporte Ranquin Ventas
+  const generarReporteRanquinVentas = async () => {
+    setLoadingReporte(true);
+    setErrorReporte("");
+
+    try {
+      const response = await fetch("http://localhost:8080/api/ventas/reporte-ranquin-ventas");
+      if (!response.ok) throw new Error("Error al obtener el reporte Ranquin Ventas");
+
+      const data = await response.json();
+      if (!data.length) {
+        setErrorReporte("No hay datos disponibles para el reporte.");
+        return;
+      }
+
+      // Crear hoja de Excel con los datos obtenidos
+      const ws = XLSX.utils.json_to_sheet(
+        data.map(row => ({
+          "Código PDV": row[0],
+          "PDV": row[1],
+          "Ciudad": row[2],
+          "Tipo Display Essence": row[3],
+          "Tipo Mueble Display Catrice": row[4],
+          "Total Unidades Mes": row[5],
+          "Promedio Mes": row[6],
+          "Unidades Diarias": row[7],
+        }))
+      );
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Reporte Ranquin Ventas");
+
+      // Descargar el archivo Excel
+      XLSX.writeFile(wb, "Reporte_Ranquin_Ventas.xlsx");
+
+    } catch (error) {
+      setErrorReporte(error.message);
+    } finally {
+      setLoadingReporte(false);
+    }
+  };
 
   const downloadVentasReport = async () => {
     setLoadingVentas(true); // Establece el estado de carga
   
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/reporte-venta", {
+      const response = await fetch("http://localhost:8082/api/fybeca/reporte-ventas", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -95,8 +142,7 @@ const Fybeca = () => {
       }
   
       alert("Ventas eliminadas correctamente.");
-      // Actualiza la lista de ventas después de eliminar
-      loadVentas();
+      await loadVentas(); // 🔄 Recargar ventas después de la eliminación
     } catch (error) {
       console.error(error);
       alert("Error al eliminar las ventas");
@@ -115,7 +161,7 @@ const Fybeca = () => {
     setLoadingVentas(true);
     setErrorVentas("");
     try {
-      // Construye la URL incluyendo los filtros si están definidos
+      // Construir la URL con template literal
       let url = `http://localhost:8082/api/fybeca/venta?page=${page}&size=${itemsPerPage}`;
       if (year) {
         url += `&year=${year}`;
@@ -123,9 +169,9 @@ const Fybeca = () => {
       if (month) {
         url += `&month=${month}`;
       }
-      
       const response = await fetch(url);
       if (!response.ok) throw new Error("Error al cargar ventas");
+
       const data = await response.json();
       setVentas(data);
     } catch (error) {
@@ -146,7 +192,7 @@ const Fybeca = () => {
     
 // Renderizado de los botones de paginación
 const renderPagination = () => {
-  const totalPages = Math.ceil(ventas.total / itemsPerPage); // Asegúrate de que `ventas.total` sea el total de las ventas
+  const totalPages = Math.ceil(ventas.total / itemsPerPage); // Asegúrate de que ventas.total sea el total de las ventas
 
   const pageNumbers = [];
   for (let i = 1; i <= totalPages; i++) {
@@ -166,8 +212,9 @@ const renderPagination = () => {
   // Función para cargar las marcas disponibles desde la API
   const loadMarcas = async () => {
     try {
-      const response = await fetch("http://localhost:8082/api/fybeca/marcas-ventas"); // Ajusta la URL del API
-      if (!response.ok) throw new Error(`Error al cargar marcas: ${response.statusText}`);
+      const response = await fetch("http://localhost:8082/api/fybeca/marcas-ventas");
+      if (!response.ok)
+        throw new Error(`Error al cargar marcas: ${response.statusText}`);
       const data = await response.json();
       setMarcas(data);
     } catch (error) {
@@ -175,14 +222,14 @@ const renderPagination = () => {
     }
     // Llamada a la API con el año y mes como parámetros
     fetch(`/api/tu-endpoint?year=${year}&month=${month}`)
-      .then((response) => response.json())
-      .then((data) => setData(data))
-      .catch((error) => console.error('Error al cargar los datos:', error));
+  .then((response) => response.json())
+  .then((data) => setData(data))
+  .catch((error) => console.error('Error al cargar los datos:', error));
   };
 
   // Función para cargar el template de ventas
   const cargarTemplate = async (file) => {
-    setLoadingTemplate(true); // Activar la carga
+    setLoadingTemplate(true); // Activar el spinner
     const formData = new FormData();
     formData.append("file", file);
 
@@ -192,16 +239,17 @@ const renderPagination = () => {
         body: formData,
       });
 
-      if (!response.ok) throw new Error(`Error al cargar el archivo: ${response.statusText}`);
+      if (!response.ok)
+        throw new Error(`Error al cargar el archivo: ${response.statusText}`);
 
       const message = await response.text();
       setSuccessMessage(message);
-      loadVentas(); // Recargar las ventas después de subir el archivo
+      await loadVentas(); // 🔄 Recargar ventas después de la subida
     } catch (error) {
-    setErrorVentas(error.message);
-  } finally {
-    setLoadingTemplate(false); // Desactivar la carga
-  }
+      setErrorVentas(error.message);
+    } finally {
+      setLoadingTemplate(false); // Desactivar el spinner después de completar la carga
+    }
   };
 
   // Función para eliminar una venta
@@ -211,10 +259,11 @@ const renderPagination = () => {
         method: "DELETE",
       });
 
-      if (!response.ok) throw new Error(`Error al eliminar la venta: ${response.statusText}`);
+      if (!response.ok)
+        throw new Error(`Error al eliminar la venta: ${response.statusText}`);
 
       setSuccessMessage("Venta eliminada correctamente.");
-      loadVentas(); // Recargar las ventas después de eliminar
+      await loadVentas(); // 🔄 Recargar ventas después de la eliminación
     } catch (error) {
       setErrorVentas(error.message);
     }
@@ -223,36 +272,35 @@ const renderPagination = () => {
   // Función para actualizar una venta
   const actualizarVenta = async (venta) => {
     try {
-        const response = await fetch(`http://localhost:8082/api/fybeca/venta/${venta.id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(venta),
+      const response = await fetch(`http://localhost:8082/api/fybeca/venta/${venta.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(venta),
+      });
+
+      if (!response.ok)throw new Error(`Error al actualizar la venta: ${response.statusText}`);
+
+      setEditVenta(null);
+      await loadVentas(); // 🔄 Recargar ventas después de la actualización
+      if (toast.current) {
+        toast.current.show({
+          severity: 'success',
+          summary: 'Éxito',
+          detail: 'Venta actualizada correctamente.',
+          life: 3000,
         });
-
-        if (!response.ok) throw new Error(`Error al actualizar la venta: ${response.statusText}`);
-
-        setEditVenta(null);
-        loadVentas(); // Recargar las ventas después de actualizar
-        
-        if (toast.current) {
-            toast.current.show({ 
-                severity: 'success', 
-                summary: 'Éxito', 
-                detail: 'Venta actualizada correctamente.', 
-                life: 3000
-            });
-        }
+      }
     } catch (error) {
-        if (toast.current) {
-            toast.current.show({ 
-                severity: 'error', 
-                summary: 'Error', 
-                detail: error.message, 
-                life: 3000
-            });
-        }
+      if (toast.current) {
+        toast.current.show({
+          severity: 'error',
+          summary: 'Error',
+          detail: error.message,
+          life: 3000,
+        });
+      }
     }
   };
 
@@ -299,7 +347,10 @@ const renderPagination = () => {
   }, [year, month]); 
   
   
-  
+  // Suponiendo que itemsPerPage y currentPage ya están definidos:
+const totalPages = Math.ceil(filteredVentas.length / itemsPerPage);
+const startIndex = (currentPage - 1) * itemsPerPage;
+const paginatedVentas = filteredVentas.slice(startIndex, startIndex + itemsPerPage);
 
   // Función para exportar los datos a XLSX
   const exportToXLSX = () => {
@@ -316,6 +367,7 @@ const renderPagination = () => {
     const exportData = filteredVentas.map((venta) => ({
       Año: venta.anio,
       Mes: venta.mes,
+      Dia: venta.dia,
       Marca: venta.marca,
       "Cliente ID": venta.mantenimientoCliente ? venta.mantenimientoCliente.cod_Cliente : "N/A",
       "Nombre Cliente": venta.mantenimientoCliente ? venta.mantenimientoCliente.nombre_Cliente : "N/A",
@@ -341,14 +393,45 @@ const renderPagination = () => {
     XLSX.writeFile(wb, "Ventas_Fybeca.xlsx");
   };
 
+  // Función para cargar las ciudades desde el API
+  const loadCiudades = async () => {
+    try {
+        const response = await fetch("http://localhost:8082/api/fybeca/ciudades-ventas");
+        if (!response.ok) throw new Error("Error al cargar las ciudades");
+        const data = await response.json();
+        setCiudades(data);
+    } catch (error) {
+        console.error("Error en loadCiudades:", error);
+    }
+};
+
   return (
     <div className="container">
-        
       <h1>Ventas Fybeca</h1>
-      <Toast ref={toast} className="custom-toast"/>
+      <Toast ref={toast} className="custom-toast" />
+  
+      {/* Mostrar mensajes */}
+      {errorVentas && <p className="error">{errorVentas}</p>}
+      {successMessage && <p className="success">{successMessage}</p>}
+  
       <h2>Ventas</h2>
-
-      <div className="upload-section">
+  
+      {/* Spinner para carga de archivos */}
+      {loadingTemplate && (
+        <div className="overlay">
+          <div className="spinner-container">
+            <ProgressSpinner
+              style={{ width: "70px", height: "70px" }}
+              strokeWidth="8"
+              animationDuration="0.7s"
+            />
+            <p>Subiendo archivo...</p>
+          </div>
+        </div>
+      )}
+  
+      {/* Sección de carga y reportes */}
+      <section className="upload-section">
         <label htmlFor="fileInput" className="file-upload-label">
           <i className="fas fa-file-upload"></i> Elegir Archivo
         </label>
@@ -363,66 +446,54 @@ const renderPagination = () => {
           }}
           style={{ display: "none" }}
         />
-        {/* Select para filtrar por año */}
-          <select
-            value={filterYear}
-            onChange={(e) => setFilterYear(e.target.value)}
-          >
-            <option value="">Selecciona un año</option>
-            {[...new Set(ventas.map((venta) => venta.anio))].map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-
-          {/* Select para filtrar por mes */}
-          <select
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value)}
-          >
-            <option value="">Selecciona un mes</option>
-            {[...new Set(ventas.map((venta) => venta.mes))].map((month) => (
-              <option key={month} value={month}>
-                {monthNames[month - 1]}
-              </option>
-            ))}
-          </select>
-
-          {/* Luego el selector de marca */}
-          <select
-            value={filterMarca}
-            onChange={(e) => setFilterMarca(e.target.value)}
-          >
-            <option value="">Todas las marcas</option>
-            {marcas.map((marca) => (
-              <option key={marca} value={marca}>
-                {marca}
-              </option>
-            ))}
-          </select>
-
-          {/* Input para búsqueda adicional (si se requiere) */}
-          <input
-            type="text"
-            placeholder="Filtrar ventas"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-
-          <button onClick={() => loadVentas(currentPage, filterYear, filterMonth)}>
-            Filtrar Ventas
-          </button>
+  
         <a href="/TEMPLATE VENTAS FYBECA.xlsx" download="TEMPLATE VENTAS FYBECA.xlsx">
           <button className="btn-template">Descargar Template</button>
         </a>
+        {/* Botón para generar el reporte */}
+        <button onClick={generarReporteRanquinVentas} disabled={loadingReporte}>
+          {loadingReporte ? "Generando..." : "Generar Reporte Ranquin Ventas"}
+        </button>
         <button onClick={downloadVentasReport} disabled={loadingVentas}>
           {loadingVentas ? "Cargando..." : "Descargar Reporte de Ventas"}
         </button>
-
-      </div>
-
-      <div className="actions-section">
+      </section>
+  
+      {/* Filtros */}
+      <section className="filter-section">
+        <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+          <option value="">Selecciona un año</option>
+          {[...new Set(ventas.map((venta) => venta.anio))].map((year) => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
+  
+        <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+          <option value="">Selecciona un mes</option>
+          {[...new Set(ventas.map((venta) => venta.mes))].map((month) => (
+            <option key={month} value={month}>{monthNames[month - 1]}</option>
+          ))}
+        </select>
+  
+        <select value={filterMarca} onChange={(e) => setFilterMarca(e.target.value)}>
+          <option value="">Todas las marcas</option>
+          {marcas.map((marca) => (
+            <option key={marca} value={marca}>{marca}</option>
+          ))}
+        </select>
+  
+        <input
+          type="text"
+          placeholder="Filtrar ventas"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+  
+        <button onClick={() => loadVentas(1, filterYear, filterMonth)}>Filtrar Ventas</button>
+      </section>
+  
+      {/* Acciones */}
+      <section className="actions-section">
         <span
           className={`delete-icon ${selectedVentas.length === 0 ? 'icon-disabled' : 'icon-enabled'}`}
           onClick={selectedVentas.length > 0 ? handleDeleteSelected : null}
@@ -430,37 +501,39 @@ const renderPagination = () => {
         >
           <i className="fas fa-trash-alt"></i> Eliminar
         </span>
+  
         {selectedVentas.length > 0 && (
           <span className="selected-rows">
             Filas seleccionadas: {selectedVentas.length}
           </span>
         )}
-      </div>
-                  
+      </section>
+  
+      {/* Tabla de Ventas */}
       {loadingVentas ? (
         <p className="loading">Cargando ventas...</p>
       ) : filteredVentas.length === 0 ? (
         <p>No hay ventas disponibles.</p>
       ) : (
-        
         <table>
           <thead>
             <tr>
-            <th>
-              <input
-                type="checkbox"
-                onChange={handleSelectAll}
-                checked={selectedVentas.length === ventas.length}
-              />
-            </th>
+              <th>
+                <input
+                  type="checkbox"
+                  onChange={handleSelectAll}
+                  checked={selectedVentas.length === ventas.length}
+                />
+              </th>
               <th>Año</th>
               <th>Mes</th>
+              <th>Dia</th>
               <th>Marca</th>
               <th>Cliente ID</th>
               <th>Nombre Cliente</th>
               <th>Código Barra SAP</th>
               <th>Código Producto SAP</th>
-              <th>Código Item</th> {/* Cambiado a Código Item */}
+              <th>Código Item</th>
               <th>Nombre Producto</th>
               <th>Código PDV</th>
               <th>Ciudad</th>
@@ -473,24 +546,24 @@ const renderPagination = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredVentas.map((venta) => (
+            {paginatedVentas.map((venta) => (
               <tr key={venta.id}>
                 <td>
                   <input
                     type="checkbox"
                     checked={selectedVentas.includes(venta.id)}
                     onChange={() => handleSelectVenta(venta.id)}
-                    
                   />
                 </td>
                 <td>{venta.anio}</td>
                 <td>{venta.mes}</td>
+                <td>{venta.dia}</td>
                 <td>{venta.marca}</td>
                 <td>{venta.mantenimientoCliente ? venta.mantenimientoCliente.cod_Cliente : "N/A"}</td>
                 <td>{venta.mantenimientoCliente ? venta.mantenimientoCliente.nombre_Cliente : "N/A"}</td>
                 <td>{venta.codBarra}</td>
                 <td>{venta.codigo_Sap}</td>
-                <td>{venta.mantenimientoProducto ? venta.mantenimientoProducto.cod_Item : "N/A"}</td> {/* Mostrar Código Item */}
+                <td>{venta.mantenimientoProducto ? venta.mantenimientoProducto.cod_Item : "N/A"}</td>
                 <td>{venta.nombre_Producto}</td>
                 <td>{venta.cod_Pdv}</td>
                 <td>{venta.mantenimientoCliente ? venta.mantenimientoCliente.ciudad : "N/A"}</td>
@@ -500,11 +573,9 @@ const renderPagination = () => {
                 <td>{venta.venta_Dolares.toFixed(2)}</td>
                 <td>{venta.venta_Unidad}</td>
                 <td>
-                  {/* Botón para editar con ícono de lápiz */}
                   <button className="btn-crud" onClick={() => setEditVenta(venta)} title="Editar">
                     <i className="fas fa-pencil-alt"></i>
                   </button>
-                  {/* Botón para eliminar con ícono de basurero */}
                   <button className="btn-crud" onClick={() => eliminarVenta(venta.id)} title="Eliminar">
                     <i className="fas fa-trash-alt"></i>
                   </button>
@@ -513,9 +584,7 @@ const renderPagination = () => {
             ))}
           </tbody>
         </table>
-        
-      )}
-
+      )}  
       {editVenta && (
         <div className="modal">
           <div className="modal-content">
@@ -546,6 +615,13 @@ const renderPagination = () => {
                 name="mes"
                 value={editVenta.mes}
                 onChange={(e) => setEditVenta({ ...editVenta, mes: e.target.value })} 
+              />
+              <label>Dia:</label>
+              <input
+                type="number"
+                name="dia"
+                value={editVenta.dia}
+                onChange={(e) => setEditVenta({ ...editVenta, dia: e.target.value })} 
               />
               <label>Marca:</label>
               <input

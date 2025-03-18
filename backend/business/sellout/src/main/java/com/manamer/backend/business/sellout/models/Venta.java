@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.Data;
+import jakarta.persistence.Transient;
 /**
  *
  * @author Fernanda Jama
@@ -27,6 +28,7 @@ public class Venta {
     
     private int anio;
     private int mes;
+    private int dia;
     private String marca;
     private double venta_Dolares;
     private double venta_Unidad;
@@ -35,12 +37,14 @@ public class Venta {
 
     @Column(name = "cod_Barra")
     private String codBarra;
-
     private String cod_Pdv;
     private String descripcion;
     private String pdv;
     private double stock_Dolares;
     private double stock_Unidades;
+    
+    @Transient // Este campo NO se guardará en la base de datos
+    private String ciudad;
 
      // Cambiar 'Cliente' por 'MantenimientoCliente'
      @ManyToOne(fetch = FetchType.EAGER)
@@ -51,4 +55,6 @@ public class Venta {
      @ManyToOne(fetch = FetchType.EAGER)
      @JoinColumn(name = "id_MantenimientoProducto", referencedColumnName = "id")
      private MantenimientoProducto mantenimientoProducto;
+
+    private String unidades_Diarias;
  }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./css/fybeca.css"; // Asegúrate de tener tu archivo CSS
+import { ProgressSpinner } from 'primereact/progressspinner';
 
 const FybecaProducto = () => {
   const [productos, setProductos] = useState([]);
@@ -44,6 +45,7 @@ const FybecaProducto = () => {
   // Maneja el envío del formulario de filtros
   const handleApplyFilters = (e) => {
     e.preventDefault();
+    setLoading(true); // Activa el spinner antes de filtrar
     loadProductos();  // Recargar productos con los filtros aplicados
   };
 
@@ -60,6 +62,7 @@ const FybecaProducto = () => {
 
   const handleUpdateProducto = async (e) => {
     e.preventDefault();
+    setLoading(true); // Activa el spinner mientras se actualiza el producto
     try {
       const response = await fetch(`http://localhost:8082/api-fybeca/productos/${productoEditar.id}`, {
         method: "PUT",
@@ -71,11 +74,12 @@ const FybecaProducto = () => {
       if (!response.ok) {
         throw new Error("Error al actualizar el producto");
       }
-      loadProductos();
+      await loadProductos(); // 🔄 Recargar lista de productos después de actualizar
       handleCloseModal();
     } catch (error) {
-      setError(error.message);
-    }
+      setError(error.message); } finally {
+        setLoading(false); // Desactiva el spinner después del proceso
+      }
   };
 
   const handleInputChange = (e) => {
@@ -88,6 +92,7 @@ const FybecaProducto = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
+      setLoading(true); // Activa el spinner antes de eliminar
       try {
         const response = await fetch(`http://localhost:8082/api-fybeca/productos/${id}`, {
           method: "DELETE",
@@ -98,6 +103,8 @@ const FybecaProducto = () => {
         loadProductos();
       } catch (error) {
         setError(error.message);
+      } finally {
+        setLoading(false); // Desactiva el spinner después del proceso
       }
     }
   };
@@ -109,12 +116,26 @@ const FybecaProducto = () => {
   return (
     <div className="container">
       <h1>Fybeca - Productos</h1>
-
       {loading ? (
-        <p className="loading">Cargando productos...</p>
+        // Mostrar el spinner mientras se cargan los productos
+        <div style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "200px" // Ajusta la altura para centrar el spinner
+        }}>
+          <ProgressSpinner
+            style={{ width: "50px", height: "50px" }}
+            strokeWidth="6"
+            fill="var(--surface-ground)"
+            animationDuration="0.7s"
+          />
+        </div>
       ) : error ? (
+        // Mostrar mensaje de error si hay un problema al cargar los productos
         <p className="error">Error: {error}</p>
       ) : (
+        // Mostrar la lista de productos cuando se hayan cargado correctamente
         <>
           <h2>Lista de Productos</h2>
 
