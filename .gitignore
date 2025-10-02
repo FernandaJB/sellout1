@@ -1,1 +1,22 @@
 node_modules
+# Node/React
+node_modules/
+build/
+dist/
+*.log
+.env
+.env.*
+
+# Java/Spring
+target/
+*.iml
+*.class
+*.jar
+*.war
+.springBeans
+
+# IDE/OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

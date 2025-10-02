@@ -50,27 +50,26 @@ const DepratiTipoMueble = () => {
 
   // Función para cargar los tipos de mueble desde la API
   const loadTipoMuebles = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/deprati/tipo-mueble");
-      if (!response.ok) throw new Error(`Error al cargar tipos de mueble: ${response.statusText}`);
+     setLoading(true);
+      setError("");
+      try {
+        const response = await fetch("/api-sellout/deprati/tipo-mueble?codCliente=MZCL-000009");
+        if (!response.ok) throw new Error(`Error al cargar tipos de mueble: ${response.statusText}`);
 
-      const data = await response.json();
-      setTipoMuebles(data);
-      setFilteredTipoMuebles(data);
-      setPaginatorState(prevState => ({
-        ...prevState,
-        totalRecords: data.length
-      }));
-    } catch (error) {
-      setError(error.message);
-      showError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+        const data = await response.json();
+        setTipoMuebles(data);
+        setFilteredTipoMuebles(data);
+        setPaginatorState(prevState => ({
+          ...prevState,
+          totalRecords: data.length
+        }));
+      } catch (error) {
+        setError(error.message);
+        showError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
   // Cargar los tipos de mueble al montar el componente
   useEffect(() => {
     loadTipoMuebles();
@@ -146,7 +145,7 @@ const DepratiTipoMueble = () => {
   // Función para crear un nuevo tipo de mueble
   const crearTipoMueble = async (tipoMueble) => {
     try {
-      const response = await fetch("/api/deprati/tipo-mueble", {
+      const response = await fetch("/api-sellout/deprati/tipo-mueble", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(tipoMueble),
@@ -166,7 +165,7 @@ const DepratiTipoMueble = () => {
   const actualizarTipoMueble = async (tipoMueble) => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/deprati/tipo-mueble/${tipoMueble.id}`, {
+      const response = await fetch(`/api-sellout/deprati/tipo-mueble/${tipoMueble.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(tipoMueble),
@@ -209,7 +208,7 @@ const DepratiTipoMueble = () => {
         
         try {
           for (const batch of batches) {
-            const response = await fetch("/api/deprati/eliminar-varios-tipo-mueble", {
+            const response = await fetch("/api-sellout/deprati/eliminar-varios-tipo-mueble", {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(batch),
@@ -241,7 +240,7 @@ const DepratiTipoMueble = () => {
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const response = await fetch(`/api/deprati/tipo-mueble/${id}`, {
+          const response = await fetch(`/api-sellout/deprati/tipo-mueble/${id}`, {
             method: "DELETE",
           });
 
@@ -267,7 +266,7 @@ const DepratiTipoMueble = () => {
     formData.append("file", file);
 
     try {
-      const response = await fetch("/api/deprati/template-tipo-muebles", {
+      const response = await fetch("/api-sellout/deprati/template-tipo-muebles", {
         method: "POST",
         body: formData,
       });
@@ -342,7 +341,7 @@ const DepratiTipoMueble = () => {
   // Función para descargar el reporte
   const descargarReporte = async () => {
     try {
-      const response = await fetch("/api/deprati/reporte-tipo-mueble", {
+      const response = await fetch("/api-sellout/deprati/reporte-tipo-mueble", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
